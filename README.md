@@ -7,7 +7,7 @@ Lightweight in-memory RDF triple store for Python with configurable indexing.
 [![Tests](https://img.shields.io/github/actions/workflow/status/opencitations/triplelite/test.yml?label=tests)](https://github.com/opencitations/triplelite/actions/workflows/test.yml)
 [![Coverage](https://opencitations.github.io/triplelite/coverage-badge.svg)](https://opencitations.github.io/triplelite/coverage/)
 [![REUSE](https://api.reuse.software/badge/github.com/opencitations/triplelite)](https://api.reuse.software/info/github.com/opencitations/triplelite)
-[![License: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSES/ISC.txt)
+[![License: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
 
 ## Install
 

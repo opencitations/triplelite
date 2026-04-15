@@ -38,15 +38,17 @@ journal = f"{OC}br/062501778099"
 
 g = TripleLite(identifier=f"{OC}br/")
 
-g.add((article, RDF_TYPE, RDFTerm("uri", f"{FABIO}JournalArticle")))
-g.add((article, f"{DCTERMS}title",
-       RDFTerm("literal", "OpenCitations, An Infrastructure Organization For Open Scholarship")))
-g.add((article, f"{PRISM}publicationDate",
-       RDFTerm("literal", "2020-02", f"{XSD}gYearMonth")))
-g.add((article, f"{PRISM}volume", RDFTerm("literal", "1")))
-g.add((article, f"{PRISM}startingPage", RDFTerm("literal", "428")))
-g.add((article, f"{PRISM}endingPage", RDFTerm("literal", "444")))
-g.add((article, f"{FRBR}partOf", RDFTerm("uri", journal)))
+g.add_many([
+    (article, RDF_TYPE, RDFTerm("uri", f"{FABIO}JournalArticle")),
+    (article, f"{DCTERMS}title",
+     RDFTerm("literal", "OpenCitations, An Infrastructure Organization For Open Scholarship")),
+    (article, f"{PRISM}publicationDate",
+     RDFTerm("literal", "2020-02", f"{XSD}gYearMonth")),
+    (article, f"{PRISM}volume", RDFTerm("literal", "1")),
+    (article, f"{PRISM}startingPage", RDFTerm("literal", "428")),
+    (article, f"{PRISM}endingPage", RDFTerm("literal", "444")),
+    (article, f"{FRBR}partOf", RDFTerm("uri", journal)),
+])
 ```
 
 Query by pattern (`None` is a wildcard):
@@ -68,6 +70,21 @@ g.remove((article, f"{PRISM}startingPage", None))
 g.remove((article, f"{PRISM}endingPage", None))
 print(len(g))  # 5
 ```
+
+## Single add vs batch add
+
+`add()` inserts one triple. `add_many()` accepts any iterable and avoids per-call overhead by caching internal lookups across the batch. Use `add_many()` when loading data from a file, a SPARQL result set, or any source with more than a handful of triples:
+
+```python
+g.add((article, f"{DCTERMS}title", RDFTerm("literal", "Some title")))
+
+g.add_many(
+    (str(s), str(p), RDFTerm("uri", str(o)))
+    for s, p, o in some_external_source
+)
+```
+
+Both methods deduplicate: adding a triple that already exists is a no-op.
 
 ## What's next
 

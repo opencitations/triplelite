@@ -19,3 +19,5 @@ class RDFTerm(NamedTuple):
 Triple = tuple[str, str, RDFTerm]
 SPOIndex = dict[str, dict[str, set[RDFTerm]]]
 POSIndex = dict[str, dict[RDFTerm, set[str]]]
+_InternalSPO = dict[int, dict[int, set[int]]]
+_InternalPOS = dict[int, dict[int, set[int]]]

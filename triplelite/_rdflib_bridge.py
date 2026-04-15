@@ -37,8 +37,10 @@ def _from_rdflib_graph(graph: Graph) -> TripleLite:
 
     identifier = str(graph.identifier) if not isinstance(graph.identifier, BNode) else None
     tl = TripleLite(identifier=identifier)
-    for subject, predicate, obj in graph:
-        tl.add((str(subject), str(predicate), _rdflib_to_rdfterm(obj)))
+    tl.add_many(
+        (str(subject), str(predicate), _rdflib_to_rdfterm(obj))
+        for subject, predicate, obj in graph
+    )
     return tl
 
 

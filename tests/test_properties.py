@@ -33,10 +33,12 @@ class TestSPOPOSConsistency:
             assert s in set(g.subjects(p, o)), f"SPO has ({s},{p},{o}) but subjects() misses {s}"
 
         assert g._pos is not None
+        id_to_str = g._id_to_str
+        id_to_term = g._id_to_term
         for p_key, o_dict in g._pos.items():
             for o_key, s_set in o_dict.items():
                 for s in s_set:
-                    assert (s, p_key, o_key) in g, f"POS has ({s},{p_key},{o_key}) but not in SPO"
+                    assert (id_to_str[s], id_to_str[p_key], id_to_term[o_key]) in g
 
     @given(st.lists(triples, min_size=1, max_size=30), st.data())
     @settings(max_examples=100)
@@ -52,10 +54,25 @@ class TestSPOPOSConsistency:
             assert s in set(g.subjects(p, o))
 
         assert g._pos is not None
+        id_to_str = g._id_to_str
+        id_to_term = g._id_to_term
         for p_key, o_dict in g._pos.items():
             for o_key, s_set in o_dict.items():
                 for s in s_set:
-                    assert (s, p_key, o_key) in g
+                    assert (id_to_str[s], id_to_str[p_key], id_to_term[o_key]) in g
+
+    @given(st.lists(triples, max_size=50))
+    @settings(max_examples=200)
+    def test_add_many_matches_sequential_add(self, triple_list):
+        g1 = TripleLite(reverse_index_predicates=frozenset())
+        for t in triple_list:
+            g1.add(t)
+        g2 = TripleLite(reverse_index_predicates=frozenset())
+        g2.add_many(triple_list)
+        assert set(g1) == set(g2)
+        assert len(g1) == len(g2)
+        for s, p, o in g2:
+            assert s in set(g2.subjects(p, o))
 
     @given(st.lists(triples, max_size=30))
     @settings(max_examples=100)
@@ -86,9 +103,19 @@ class TestSPOPOSConsistency:
         assert g_full._pos is not None
         assert g_sel._pos is not None
         for p in half:
-            for o_dict_key, s_set in g_full._pos.get(p, {}).items():
-                sel_subjects = g_sel._pos.get(p, {}).get(o_dict_key, set())
-                assert s_set == sel_subjects
+            pid_full = g_full._str_to_id.get(p)
+            pid_sel = g_sel._str_to_id.get(p)
+            if pid_full is None:
+                continue
+            for o_dict_key, s_set in g_full._pos.get(pid_full, {}).items():
+                o_term = g_full._id_to_term[o_dict_key]
+                oid_sel = g_sel._term_to_id.get(o_term)
+                if pid_sel is None or oid_sel is None:
+                    continue
+                sel_subjects = g_sel._pos.get(pid_sel, {}).get(oid_sel, set())
+                full_strs = {g_full._id_to_str[s] for s in s_set}
+                sel_strs = {g_sel._id_to_str[s] for s in sel_subjects}
+                assert full_strs == sel_strs
 
     @given(st.lists(triples, min_size=1, max_size=30))
     @settings(max_examples=100)
@@ -100,7 +127,8 @@ class TestSPOPOSConsistency:
         subject = triple_list[0][0]
         sub = g.subgraph(subject)
         if sub is None:
-            assert subject not in g._spo
+            sid = g._str_to_id.get(subject)
+            assert sid is None or sid not in g._spo
             return
 
         expected = set(g.triples((subject, None, None)))

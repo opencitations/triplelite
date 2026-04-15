@@ -48,21 +48,57 @@ class TestAdd:
         g.add((URI_A, PRED_1, OBJ_URI))
         g.add((URI_A, PRED_2, OBJ_LIT))
         assert g._pos is not None
-        assert PRED_1 in g._pos
-        assert PRED_2 not in g._pos
+        assert g._str_to_id[PRED_1] in g._pos
+        assert g._str_to_id[PRED_2] not in g._pos
 
     def test_add_index_all_predicates(self):
         g = TripleLite(reverse_index_predicates=frozenset())
         g.add((URI_A, PRED_1, OBJ_URI))
         g.add((URI_A, PRED_2, OBJ_LIT))
         assert g._pos is not None
-        assert PRED_1 in g._pos
-        assert PRED_2 in g._pos
+        assert g._str_to_id[PRED_1] in g._pos
+        assert g._str_to_id[PRED_2] in g._pos
 
     def test_no_reverse_index_by_default(self):
         g = TripleLite()
         g.add((URI_A, PRED_1, OBJ_URI))
         assert g._pos is None
+
+
+class TestAddMany:
+    def test_add_many_equivalent_to_add_loop(self):
+        triples = [
+            (URI_A, PRED_1, OBJ_URI),
+            (URI_A, PRED_2, OBJ_LIT),
+            (URI_B, PRED_1, OBJ_LANG),
+        ]
+        g1 = TripleLite()
+        for t in triples:
+            g1.add(t)
+        g2 = TripleLite()
+        g2.add_many(triples)
+        assert set(g1) == set(g2)
+        assert len(g1) == len(g2)
+
+    def test_add_many_empty(self):
+        g = TripleLite()
+        g.add_many([])
+        assert len(g) == 0
+
+    def test_add_many_with_duplicates(self):
+        g = TripleLite()
+        g.add_many([(URI_A, PRED_1, OBJ_URI), (URI_A, PRED_1, OBJ_URI)])
+        assert len(g) == 1
+
+    def test_add_many_with_reverse_index(self):
+        g = TripleLite(reverse_index_predicates=frozenset({PRED_1}))
+        g.add_many([
+            (URI_A, PRED_1, OBJ_URI),
+            (URI_B, PRED_1, OBJ_URI),
+            (URI_A, PRED_2, OBJ_LIT),
+        ])
+        assert set(g.subjects(PRED_1, OBJ_URI)) == {URI_A, URI_B}
+        assert len(g) == 3
 
 
 class TestRemove:
@@ -112,7 +148,7 @@ class TestRemove:
         g = TripleLite()
         g.add((URI_A, PRED_1, OBJ_URI))
         g.remove((URI_A, PRED_1, OBJ_URI))
-        assert URI_A not in g._spo
+        assert g._str_to_id[URI_A] not in g._spo
 
     def test_remove_updates_reverse_index(self):
         g = TripleLite(reverse_index_predicates=frozenset({PRED_1}))
@@ -132,6 +168,13 @@ class TestRemove:
         g.add((URI_A, PRED_1, OBJ_URI))
         g.remove((URI_B, PRED_1, OBJ_URI))
         assert len(g) == 1
+
+    def test_remove_interned_but_absent_triple(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.add((URI_A, PRED_2, OBJ_LIT))
+        g.remove((URI_A, PRED_1, OBJ_LIT))
+        assert len(g) == 2
 
 
 class TestTriples:
