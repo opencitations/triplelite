@@ -1,0 +1,46 @@
+[project]
+name = "litegraph"
+version = "0.1.0"
+description = "Lightweight RDF graph with configurable indices"
+license = "ISC"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Arcangelo Massari", email = "arcangelo.massari@unibo.it"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.optional-dependencies]
+rdflib = ["rdflib>=6.0.0"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.0",
+    "rdflib>=6.0.0",
+    "pyright>=1.1.408",
+    "ruff>=0.15.10",
+    "pytest-cov>=7.1.0",
+    "genbadge[coverage]>=1.1.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["litegraph"]
+
+[tool.ruff.lint]
+select = ["I", "TID", "PLC0415"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
