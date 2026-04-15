@@ -1,9 +1,9 @@
 ---
 title: Data model
-description: How LiteGraph represents triples, URIs, and literals
+description: How TripleLite represents triples, URIs, and literals
 ---
 
-A triple in LiteGraph is a Python tuple of three elements:
+A triple in TripleLite is a Python tuple of three elements:
 
 ```python
 (subject: str, predicate: str, object: RDFTerm)
@@ -22,7 +22,7 @@ class RDFTerm(NamedTuple):
 `datatype` and `lang` only apply to literals. A typed literal carries a datatype URI; a language-tagged literal carries a tag and no datatype:
 
 ```python
-from litegraph import RDFTerm
+from triplelite import RDFTerm
 
 uri = RDFTerm("uri", "http://purl.org/spar/fabio/JournalArticle")
 year = RDFTerm("literal", "2020", "http://www.w3.org/2001/XMLSchema#gYear")

@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 
 from rdflib import BNode, Dataset, Graph, Literal, Node, URIRef
 
-from litegraph._types import _XSD_STRING, RDFTerm
+from triplelite._types import _XSD_STRING, RDFTerm
 
 if TYPE_CHECKING:
-    from litegraph._graph import LiteGraph
+    from triplelite._graph import TripleLite
 
 
 def _rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
@@ -32,23 +32,23 @@ def _to_rdflib_triple(obj: RDFTerm) -> URIRef | Literal:
     return URIRef(obj.value)
 
 
-def _from_rdflib_graph(graph: Graph) -> LiteGraph:
-    from litegraph._graph import LiteGraph
+def _from_rdflib_graph(graph: Graph) -> TripleLite:
+    from triplelite._graph import TripleLite
 
     identifier = str(graph.identifier) if not isinstance(graph.identifier, BNode) else None
-    litegraph = LiteGraph(identifier=identifier)
+    tl = TripleLite(identifier=identifier)
     for subject, predicate, obj in graph:
-        litegraph.add((str(subject), str(predicate), _rdflib_to_rdfterm(obj)))
-    return litegraph
+        tl.add((str(subject), str(predicate), _rdflib_to_rdfterm(obj)))
+    return tl
 
 
-def from_rdflib(source: Graph | Dataset) -> list[LiteGraph]:
+def from_rdflib(source: Graph | Dataset) -> list[TripleLite]:
     if isinstance(source, Dataset):
         return [_from_rdflib_graph(graph) for graph in source.graphs()]
     return [_from_rdflib_graph(source)]
 
 
-def to_rdflib(source: LiteGraph) -> Graph | Dataset:
+def to_rdflib(source: TripleLite) -> Graph | Dataset:
     if source.identifier is not None:
         dataset = Dataset()
         named_graph = dataset.graph(URIRef(source.identifier))

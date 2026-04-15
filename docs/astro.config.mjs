@@ -4,16 +4,16 @@ import starlight from "@astrojs/starlight";
 import rehypeExternalLinks from "rehype-external-links";
 
 export default defineConfig({
-  site: "https://arcangelo-massari.github.io",
-  base: "/litegraph",
+  site: "https://opencitations.github.io",
+  base: "/triplelite",
   integrations: [
     starlight({
-      title: "LiteGraph",
+      title: "TripleLite",
       social: [
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/arcangelo-massari/litegraph",
+          href: "https://github.com/opencitations/triplelite",
         },
       ],
       sidebar: [
@@ -33,7 +33,7 @@ export default defineConfig({
       ],
       editLink: {
         baseUrl:
-          "https://github.com/arcangelo-massari/litegraph/edit/main/docs/",
+          "https://github.com/opencitations/triplelite/edit/main/docs/",
       },
     }),
   ],

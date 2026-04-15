@@ -2,12 +2,12 @@
 #
 # SPDX-License-Identifier: ISC
 
-from litegraph._graph import LiteGraph
-from litegraph._rdflib_bridge import from_rdflib, to_rdflib
-from litegraph._types import _XSD_STRING, POSIndex, RDFTerm, SPOIndex, Triple
+from triplelite._graph import TripleLite
+from triplelite._rdflib_bridge import from_rdflib, to_rdflib
+from triplelite._types import _XSD_STRING, POSIndex, RDFTerm, SPOIndex, Triple
 
 __all__ = [
-    "LiteGraph",
+    "TripleLite",
     "POSIndex",
     "RDFTerm",
     "SPOIndex",

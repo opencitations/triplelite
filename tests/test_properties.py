@@ -5,7 +5,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from litegraph import LiteGraph, RDFTerm
+from triplelite import RDFTerm, TripleLite
 
 uris = st.from_regex(r"http://example\.org/[a-z]{1,5}", fullmatch=True)
 predicates = st.from_regex(r"http://example\.org/p[1-5]", fullmatch=True)
@@ -25,7 +25,7 @@ class TestSPOPOSConsistency:
     @given(st.lists(triples, max_size=50))
     @settings(max_examples=200)
     def test_add_keeps_indices_in_sync(self, triple_list):
-        g = LiteGraph(reverse_index_predicates=frozenset())
+        g = TripleLite(reverse_index_predicates=frozenset())
         for t in triple_list:
             g.add(t)
 
@@ -41,7 +41,7 @@ class TestSPOPOSConsistency:
     @given(st.lists(triples, min_size=1, max_size=30), st.data())
     @settings(max_examples=100)
     def test_add_then_remove_keeps_sync(self, triple_list, data):
-        g = LiteGraph(reverse_index_predicates=frozenset())
+        g = TripleLite(reverse_index_predicates=frozenset())
         for t in triple_list:
             g.add(t)
 
@@ -60,7 +60,7 @@ class TestSPOPOSConsistency:
     @given(st.lists(triples, max_size=30))
     @settings(max_examples=100)
     def test_len_matches_iteration_count(self, triple_list):
-        g = LiteGraph()
+        g = TripleLite()
         for t in triple_list:
             g.add(t)
         assert len(g) == len(list(g))
@@ -76,8 +76,8 @@ class TestSPOPOSConsistency:
             return
 
         half = frozenset(list(preds)[:len(preds) // 2 + 1])
-        g_full = LiteGraph(reverse_index_predicates=frozenset())
-        g_sel = LiteGraph(reverse_index_predicates=half)
+        g_full = TripleLite(reverse_index_predicates=frozenset())
+        g_sel = TripleLite(reverse_index_predicates=half)
 
         for t in triple_list:
             g_full.add(t)
@@ -93,7 +93,7 @@ class TestSPOPOSConsistency:
     @given(st.lists(triples, min_size=1, max_size=30))
     @settings(max_examples=100)
     def test_subgraph_contains_all_subject_triples(self, triple_list):
-        g = LiteGraph()
+        g = TripleLite()
         for t in triple_list:
             g.add(t)
 

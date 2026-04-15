@@ -1,21 +1,21 @@
 ---
-title: LiteGraph
+title: TripleLite
 description: Lightweight in-memory RDF graph for Python with configurable indexing
 template: doc
 ---
 
-LiteGraph is an in-memory RDF triple store for Python. It stores triples in nested dictionaries, with an optional reverse index configurable per predicate.
+TripleLite is an in-memory RDF triple store for Python. It stores triples in nested dictionaries, with an optional reverse index configurable per predicate.
 
 ## Install
 
 ```sh
-pip install litegraph
+pip install triplelite
 ```
 
 Need [rdflib](https://rdflib.readthedocs.io/) interop? Install the extra:
 
 ```sh
-pip install litegraph[rdflib]
+pip install triplelite[rdflib]
 ```
 
 ## Quick start
@@ -23,7 +23,7 @@ pip install litegraph[rdflib]
 This example models the article ["OpenCitations, an infrastructure organization for open scholarship"](https://doi.org/10.1162/qss_a_00023) using predicates from the [OpenCitations Data Model](https://doi.org/10.6084/m9.figshare.3443876):
 
 ```python
-from litegraph import LiteGraph, RDFTerm
+from triplelite import TripleLite, RDFTerm
 
 DCTERMS = "http://purl.org/dc/terms/"
 FABIO = "http://purl.org/spar/fabio/"
@@ -36,7 +36,7 @@ OC = "https://w3id.org/oc/meta/"
 article = f"{OC}br/062501777134"
 journal = f"{OC}br/062501778099"
 
-g = LiteGraph(identifier=f"{OC}br/")
+g = TripleLite(identifier=f"{OC}br/")
 
 g.add((article, RDF_TYPE, RDFTerm("uri", f"{FABIO}JournalArticle")))
 g.add((article, f"{DCTERMS}title",
@@ -71,7 +71,7 @@ print(len(g))  # 5
 
 ## What's next
 
-- [Data model](/litegraph/guide/rdfterm/): how triples, URIs, and literals are represented internally
-- [Reverse indexing](/litegraph/guide/indexing/): when to enable it, selective vs full, memory trade-offs
-- [Subgraph extraction](/litegraph/guide/subgraph/): pulling all triples for a subject into a new graph
-- [rdflib interop](/litegraph/guide/rdflib/): converting between LiteGraph and rdflib
+- [Data model](/triplelite/guide/rdfterm/): how triples, URIs, and literals are represented internally
+- [Reverse indexing](/triplelite/guide/indexing/): when to enable it, selective vs full, memory trade-offs
+- [Subgraph extraction](/triplelite/guide/subgraph/): pulling all triples for a subject into a new graph
+- [rdflib interop](/triplelite/guide/rdflib/): converting between TripleLite and rdflib

@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from typing import Iterator
 
-from litegraph._rdflib_bridge import to_rdflib as _to_rdflib
-from litegraph._types import POSIndex, RDFTerm, SPOIndex, Triple
+from triplelite._rdflib_bridge import to_rdflib as _to_rdflib
+from triplelite._types import POSIndex, RDFTerm, SPOIndex, Triple
 
 
-class LiteGraph:
+class TripleLite:
     __slots__ = ("_spo", "_pos", "_indexed_predicates", "_len", "identifier")
 
     def __init__(
@@ -163,11 +163,11 @@ class LiteGraph:
                         yield subject
                         break
 
-    def subgraph(self, subject: str) -> LiteGraph | None:
+    def subgraph(self, subject: str) -> TripleLite | None:
         predicates = self._spo.get(subject)
         if predicates is None:
             return None
-        graph = LiteGraph()
+        graph = TripleLite()
         for predicate, objects in predicates.items():
             copied = set(objects)
             graph._spo.setdefault(subject, {})[predicate] = copied

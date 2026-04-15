@@ -3,7 +3,7 @@ title: Subgraph extraction
 description: Extracting all triples for a subject into a new graph
 ---
 
-`subgraph()` pulls all triples for a given subject into a new, independent `LiteGraph`:
+`subgraph()` pulls all triples for a given subject into a new, independent `TripleLite`:
 
 ```python
 sub = g.subgraph(f"{OC}br/062501777134")
