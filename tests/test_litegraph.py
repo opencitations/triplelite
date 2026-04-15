@@ -4,14 +4,8 @@
 
 from rdflib import XSD, Dataset, Graph, Literal, URIRef
 
-from litegraph import (
-    LiteGraph,
-    RDFTerm,
-    from_rdflib_dataset,
-    from_rdflib_graph,
-    rdflib_to_rdfterm,
-    to_rdflib_dataset,
-)
+from litegraph import LiteGraph, RDFTerm, from_rdflib, to_rdflib
+from litegraph._rdflib_bridge import _rdflib_to_rdfterm
 
 URI_A = "http://example.org/a"
 URI_B = "http://example.org/b"
@@ -394,84 +388,71 @@ class TestIdentifier:
 
 
 class TestRdflibCompat:
-    def test_to_rdflib_quads(self):
+    def test_to_rdflib_with_identifier(self):
         g = LiteGraph(identifier="http://example.org/graph")
         g.add((URI_A, PRED_1, OBJ_URI))
         g.add((URI_A, PRED_2, OBJ_LIT))
         g.add((URI_A, PRED_3, OBJ_LANG))
 
-        quads = list(g.to_rdflib_quads())
-        assert len(quads) == 3
+        ds = g.to_rdflib()
+        assert isinstance(ds, Dataset)
+        assert len(ds) == 3
+        assert (URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj"), URIRef("http://example.org/graph")) in ds
+        assert (URIRef(URI_A), URIRef(PRED_2), Literal("hello", datatype=XSD.string), URIRef("http://example.org/graph")) in ds
+        assert (URIRef(URI_A), URIRef(PRED_3), Literal("ciao", lang="it"), URIRef("http://example.org/graph")) in ds
 
-        graph_id = URIRef("http://example.org/graph")
-        for s, p, o, gid in quads:
-            assert isinstance(s, URIRef)
-            assert isinstance(p, URIRef)
-            assert gid == graph_id
-
-        obj_map = {str(p): o for s, p, o, gid in quads}
-        assert obj_map[PRED_1] == URIRef("http://example.org/obj")
-        assert obj_map[PRED_2] == Literal("hello", datatype=XSD.string)
-        assert obj_map[PRED_3] == Literal("ciao", lang="it")
-
-    def test_to_rdflib_quads_no_identifier(self):
+    def test_to_rdflib_no_identifier(self):
         g = LiteGraph()
         g.add((URI_A, PRED_1, OBJ_URI))
-        quads = list(g.to_rdflib_quads())
-        assert quads[0][3] is None
+        result = g.to_rdflib()
+        assert isinstance(result, Graph)
+        assert not isinstance(result, Dataset)
+        assert len(result) == 1
+        assert (URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj")) in result
 
     def test_rdflib_to_rdfterm_uri(self):
-        term = rdflib_to_rdfterm(URIRef("http://example.org/x"))
+        term = _rdflib_to_rdfterm(URIRef("http://example.org/x"))
         assert term == RDFTerm("uri", "http://example.org/x")
 
     def test_rdflib_to_rdfterm_literal(self):
-        term = rdflib_to_rdfterm(Literal("test", datatype=XSD.string))
+        term = _rdflib_to_rdfterm(Literal("test", datatype=XSD.string))
         assert term == RDFTerm("literal", "test", str(XSD.string))
 
     def test_rdflib_to_rdfterm_literal_lang(self):
-        term = rdflib_to_rdfterm(Literal("ciao", lang="it"))
+        term = _rdflib_to_rdfterm(Literal("ciao", lang="it"))
         assert term.lang == "it"
         assert term.type == "literal"
 
     def test_rdflib_to_rdfterm_passthrough(self):
         term = RDFTerm("uri", "http://x")
-        assert rdflib_to_rdfterm(term) is term
+        assert _rdflib_to_rdfterm(term) is term
 
     def test_rdflib_to_rdfterm_untyped_literal(self):
-        term = rdflib_to_rdfterm(Literal("plain"))
+        term = _rdflib_to_rdfterm(Literal("plain"))
         assert term.datatype == "http://www.w3.org/2001/XMLSchema#string"
 
-    def test_to_rdflib_quads_integer_literal(self):
+    def test_to_rdflib_integer_literal(self):
         g = LiteGraph()
         g.add((URI_A, PRED_1, OBJ_INT))
-        quads = list(g.to_rdflib_quads())
-        assert quads[0][2] == Literal("42", datatype=XSD.integer)
+        result = g.to_rdflib()
+        assert isinstance(result, Graph)
+        obj = list(result.objects(URIRef(URI_A), URIRef(PRED_1)))[0]
+        assert obj == Literal("42", datatype=XSD.integer)
 
-    def test_to_rdflib_dataset(self):
+    def test_to_rdflib_function(self):
         g = LiteGraph(identifier="http://example.org/graph")
         g.add((URI_A, PRED_1, OBJ_URI))
-        g.add((URI_A, PRED_2, OBJ_LIT))
-        ds = g.to_rdflib_dataset()
-        assert len(ds) == 2
-        assert (URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj"), URIRef("http://example.org/graph")) in ds
-
-    def test_to_rdflib_dataset_function(self):
-        g = LiteGraph(identifier="http://example.org/graph")
-        g.add((URI_A, PRED_1, OBJ_URI))
-        ds = to_rdflib_dataset(g)
-        assert len(ds) == 1
-
-    def test_to_rdflib_dataset_no_identifier(self):
-        g = LiteGraph()
-        g.add((URI_A, PRED_1, OBJ_URI))
-        ds = g.to_rdflib_dataset()
+        ds = to_rdflib(g)
+        assert isinstance(ds, Dataset)
         assert len(ds) == 1
 
     def test_from_rdflib_graph(self):
         rg = Graph(identifier=URIRef("http://example.org/graph"))
         rg.add((URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj")))
         rg.add((URIRef(URI_A), URIRef(PRED_2), Literal("hello", datatype=XSD.string)))
-        lg = from_rdflib_graph(rg)
+        graphs = from_rdflib(rg)
+        assert len(graphs) == 1
+        lg = graphs[0]
         assert lg.identifier == "http://example.org/graph"
         assert len(lg) == 2
         assert (URI_A, PRED_1, RDFTerm("uri", "http://example.org/obj")) in lg
@@ -480,14 +461,15 @@ class TestRdflibCompat:
     def test_from_rdflib_graph_no_identifier(self):
         rg = Graph()
         rg.add((URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj")))
-        lg = from_rdflib_graph(rg)
-        assert lg.identifier is None
-        assert len(lg) == 1
+        graphs = from_rdflib(rg)
+        assert len(graphs) == 1
+        assert graphs[0].identifier is None
+        assert len(graphs[0]) == 1
 
     def test_from_rdflib_graph_lang_literal(self):
         rg = Graph()
         rg.add((URIRef(URI_A), URIRef(PRED_1), Literal("ciao", lang="it")))
-        lg = from_rdflib_graph(rg)
+        lg = from_rdflib(rg)[0]
         assert (URI_A, PRED_1, OBJ_LANG) in lg
 
     def test_from_rdflib_dataset(self):
@@ -496,7 +478,7 @@ class TestRdflibCompat:
         ctx.add((URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj")))
         ctx2 = ds.graph(URIRef("http://example.org/g2"))
         ctx2.add((URIRef(URI_B), URIRef(PRED_2), Literal("test")))
-        graphs = from_rdflib_dataset(ds)
+        graphs = from_rdflib(ds)
         identifiers = {g.identifier for g in graphs}
         assert "http://example.org/g1" in identifiers
         assert "http://example.org/g2" in identifiers
@@ -506,7 +488,7 @@ class TestRdflibCompat:
         original.add((URI_A, PRED_1, OBJ_URI))
         original.add((URI_A, PRED_2, OBJ_LIT))
         original.add((URI_A, PRED_3, OBJ_LANG))
-        ds = original.to_rdflib_dataset()
-        restored = [g for g in from_rdflib_dataset(ds) if g.identifier == "http://example.org/graph"][0]
+        ds = original.to_rdflib()
+        restored = [g for g in from_rdflib(ds) if g.identifier == "http://example.org/graph"][0]
         assert len(restored) == len(original)
         assert set(restored) == set(original)

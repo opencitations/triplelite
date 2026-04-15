@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 from rdflib import BNode, Dataset, Graph, Literal, Node, URIRef
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from litegraph._graph import LiteGraph
 
 
-def rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
+def _rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
     if isinstance(node, RDFTerm):
         return node
     if isinstance(node, Literal):
@@ -24,41 +24,38 @@ def rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
     return RDFTerm("uri", str(node))
 
 
-def to_rdflib_quads(graph: LiteGraph) -> Iterator[tuple]:
-    graph_id = URIRef(graph.identifier) if graph.identifier else None
-    for subject, predicate, obj in graph:
-        subject_ref = URIRef(subject)
-        predicate_ref = URIRef(predicate)
-        if obj.type == "literal":
-            if obj.lang:
-                object_ref = Literal(obj.value, lang=obj.lang)
-            else:
-                object_ref = Literal(obj.value, datatype=URIRef(obj.datatype))
-        else:
-            object_ref = URIRef(obj.value)
-        yield subject_ref, predicate_ref, object_ref, graph_id
+def _to_rdflib_triple(obj: RDFTerm) -> URIRef | Literal:
+    if obj.type == "literal":
+        if obj.lang:
+            return Literal(obj.value, lang=obj.lang)
+        return Literal(obj.value, datatype=URIRef(obj.datatype))
+    return URIRef(obj.value)
 
 
-def from_rdflib_graph(graph: Graph) -> LiteGraph:
+def _from_rdflib_graph(graph: Graph) -> LiteGraph:
     from litegraph._graph import LiteGraph
 
     identifier = str(graph.identifier) if not isinstance(graph.identifier, BNode) else None
     litegraph = LiteGraph(identifier=identifier)
     for subject, predicate, obj in graph:
-        litegraph.add((str(subject), str(predicate), rdflib_to_rdfterm(obj)))
+        litegraph.add((str(subject), str(predicate), _rdflib_to_rdfterm(obj)))
     return litegraph
 
 
-def from_rdflib_dataset(dataset: Dataset) -> list[LiteGraph]:
-    return [from_rdflib_graph(graph) for graph in dataset.graphs()]
+def from_rdflib(source: Graph | Dataset) -> list[LiteGraph]:
+    if isinstance(source, Dataset):
+        return [_from_rdflib_graph(graph) for graph in source.graphs()]
+    return [_from_rdflib_graph(source)]
 
 
-def to_rdflib_dataset(graph: LiteGraph) -> Dataset:
-    dataset = Dataset()
-    if graph.identifier is not None:
-        dataset.addN(to_rdflib_quads(graph))
-    else:
-        default_graph = dataset.default_graph
-        for subject, predicate, obj, _ctx in to_rdflib_quads(graph):
-            default_graph.add((subject, predicate, obj))
-    return dataset
+def to_rdflib(source: LiteGraph) -> Graph | Dataset:
+    if source.identifier is not None:
+        dataset = Dataset()
+        named_graph = dataset.graph(URIRef(source.identifier))
+        for s, p, o in source:
+            named_graph.add((URIRef(s), URIRef(p), _to_rdflib_triple(o)))
+        return dataset
+    graph = Graph()
+    for s, p, o in source:
+        graph.add((URIRef(s), URIRef(p), _to_rdflib_triple(o)))
+    return graph

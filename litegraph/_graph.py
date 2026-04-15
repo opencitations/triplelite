@@ -6,10 +6,7 @@ from __future__ import annotations
 
 from typing import Iterator
 
-from litegraph._rdflib_bridge import (
-    to_rdflib_dataset as _to_rdflib_dataset,
-    to_rdflib_quads as _to_rdflib_quads,
-)
+from litegraph._rdflib_bridge import to_rdflib as _to_rdflib
 from litegraph._types import POSIndex, RDFTerm, SPOIndex, Triple
 
 
@@ -190,8 +187,5 @@ class LiteGraph:
     def __len__(self) -> int:
         return self._len
 
-    def to_rdflib_quads(self):
-        return _to_rdflib_quads(self)
-
-    def to_rdflib_dataset(self):
-        return _to_rdflib_dataset(self)
+    def to_rdflib(self):
+        return _to_rdflib(self)
