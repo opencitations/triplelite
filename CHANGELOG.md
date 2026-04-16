@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/opencitations/triplelite/compare/v1.0.0...v1.1.0) (2026-04-16)
+
+
+### Features
+
+* expose public API for rdflib_to_rdfterm, XSD_STRING, and has_subject [release] ([59059e4](https://github.com/opencitations/triplelite/commit/59059e41b847e7e4e2c9ea2f0b304ab7908b92fb))
+
 # 1.0.0 (2026-04-15)
 
 
