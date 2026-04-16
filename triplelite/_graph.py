@@ -14,6 +14,49 @@ _EMPTY_DICT: dict = {}
 _EMPTY_SET: set = set()
 
 
+class SubgraphView:
+    __slots__ = ("_parent", "_subject", "_sid", "_predicates")
+
+    def __init__(self, parent: TripleLite, subject: str, sid: int, predicates: dict[int, set[int]]) -> None:
+        self._parent = parent
+        self._subject = subject
+        self._sid = sid
+        self._predicates = predicates
+
+    def predicate_objects(self, subject: str | None = None) -> Iterator[tuple[str, RDFTerm]]:
+        if subject is not None and subject != self._subject:
+            return
+        id_to_str = self._parent._id_to_str
+        id_to_term = self._parent._id_to_term
+        for pid, objects in self._predicates.items():
+            p_str = id_to_str[pid]
+            for oid in objects:
+                yield p_str, id_to_term[oid]
+
+    def __iter__(self) -> Iterator[Triple]:
+        subject = self._subject
+        id_to_str = self._parent._id_to_str
+        id_to_term = self._parent._id_to_term
+        for pid, objects in self._predicates.items():
+            p_str = id_to_str[pid]
+            for oid in objects:
+                yield subject, p_str, id_to_term[oid]
+
+    def __len__(self) -> int:
+        return sum(len(objects) for objects in self._predicates.values())
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, (set, frozenset)):
+            return set(self) == other
+        return NotImplemented
+
+    def __sub__(self, other: set | frozenset) -> set:
+        return set(self) - other
+
+    def __rsub__(self, other: set | frozenset) -> set | frozenset:
+        return other - set(self)
+
+
 class TripleLite:
     __slots__ = (
         "_spo",
@@ -352,22 +395,14 @@ class TripleLite:
         sid = self._str_to_id.get(subject)
         return sid is not None and sid in self._spo
 
-    def subgraph(self, subject: str) -> TripleLite | None:
+    def subgraph(self, subject: str) -> SubgraphView | None:
         sid = self._str_to_id.get(subject)
         if sid is None:
             return None
         predicates = self._spo.get(sid)
         if predicates is None:
             return None
-        id_to_str = self._id_to_str
-        id_to_term = self._id_to_term
-        graph = TripleLite()
-        graph.add_many(
-            (subject, id_to_str[pid], id_to_term[oid])
-            for pid, objects in predicates.items()
-            for oid in objects
-        )
-        return graph
+        return SubgraphView(self, subject, sid, predicates)
 
     def __contains__(self, triple: tuple[str, str, RDFTerm]) -> bool:
         subject, predicate, obj = triple

@@ -4,7 +4,7 @@
 
 from rdflib import XSD, Dataset, Graph, Literal, URIRef
 
-from triplelite import RDFTerm, TripleLite, from_rdflib, rdflib_to_rdfterm, to_rdflib
+from triplelite import RDFTerm, SubgraphView, TripleLite, from_rdflib, rdflib_to_rdfterm, to_rdflib
 
 URI_A = "http://example.org/a"
 URI_B = "http://example.org/b"
@@ -377,29 +377,65 @@ class TestSubgraph:
         g.add((URI_B, PRED_1, OBJ_LIT))
         sub = g.subgraph(URI_A)
         assert sub is not None
+        assert isinstance(sub, SubgraphView)
         assert len(sub) == 2
-        assert (URI_A, PRED_1, OBJ_URI) in sub
-        assert (URI_A, PRED_2, OBJ_LIT) in sub
+        assert set(sub) == {(URI_A, PRED_1, OBJ_URI), (URI_A, PRED_2, OBJ_LIT)}
 
     def test_returns_none_for_missing(self):
         g = TripleLite()
         assert g.subgraph(URI_A) is None
 
-    def test_subgraph_no_reverse_index(self):
+    def test_view_reflects_parent_changes(self):
         g = TripleLite()
         g.add((URI_A, PRED_1, OBJ_URI))
         sub = g.subgraph(URI_A)
         assert sub is not None
-        assert sub._pos is None
-
-    def test_subgraph_independent(self):
-        g = TripleLite()
-        g.add((URI_A, PRED_1, OBJ_URI))
-        sub = g.subgraph(URI_A)
-        assert sub is not None
-        sub.add((URI_A, PRED_2, OBJ_LIT))
-        assert len(g) == 1
+        g.add((URI_A, PRED_2, OBJ_LIT))
         assert len(sub) == 2
+        assert (URI_A, PRED_2, OBJ_LIT) in set(sub)
+
+    def test_predicate_objects(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.add((URI_A, PRED_2, OBJ_LIT))
+        sub = g.subgraph(URI_A)
+        assert sub is not None
+        assert set(sub.predicate_objects(URI_A)) == {(PRED_1, OBJ_URI), (PRED_2, OBJ_LIT)}
+
+    def test_predicate_objects_wrong_subject(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        sub = g.subgraph(URI_A)
+        assert sub is not None
+        assert list(sub.predicate_objects(URI_B)) == []
+
+    def test_iter(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.add((URI_A, PRED_2, OBJ_LIT))
+        sub = g.subgraph(URI_A)
+        assert sub is not None
+        assert set(sub) == {(URI_A, PRED_1, OBJ_URI), (URI_A, PRED_2, OBJ_LIT)}
+
+    def test_set_difference(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.add((URI_A, PRED_2, OBJ_LIT))
+        sub = g.subgraph(URI_A)
+        assert sub is not None
+        current = {(URI_A, PRED_1, OBJ_URI), (URI_A, PRED_2, OBJ_LIT), (URI_A, PRED_3, OBJ_INT)}
+        added = current - sub
+        assert added == {(URI_A, PRED_3, OBJ_INT)}
+        removed = sub - current
+        assert removed == set()
+
+    def test_eq_with_frozenset(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        sub = g.subgraph(URI_A)
+        assert sub is not None
+        assert sub == {(URI_A, PRED_1, OBJ_URI)}
+        assert sub != {(URI_A, PRED_1, OBJ_LIT)}
 
 
 class TestContains:

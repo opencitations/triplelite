@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: ISC
 
-from triplelite._graph import TripleLite
+from triplelite._graph import SubgraphView, TripleLite
 from triplelite._rdflib_bridge import from_rdflib, rdflib_to_rdfterm, to_rdflib
 from triplelite._types import XSD_STRING, POSIndex, RDFTerm, SPOIndex, Triple
 
 __all__ = [
+    "SubgraphView",
     "TripleLite",
     "POSIndex",
     "RDFTerm",
