@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/opencitations/triplelite/compare/v1.1.0...v1.2.0) (2026-04-16)
+
+
+### Features
+
+* replace subgraph copy with zero-copy SubgraphView [release] ([4326f1a](https://github.com/opencitations/triplelite/commit/4326f1ad9c70b683a4de245772b0f01933745377))
+
 # [1.1.0](https://github.com/opencitations/triplelite/compare/v1.0.0...v1.1.0) (2026-04-16)
 
 
