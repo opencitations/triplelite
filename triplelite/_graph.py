@@ -348,6 +348,10 @@ class TripleLite:
                         yield id_to_str[sid]
                         break
 
+    def has_subject(self, subject: str) -> bool:
+        sid = self._str_to_id.get(subject)
+        return sid is not None and sid in self._spo
+
     def subgraph(self, subject: str) -> TripleLite | None:
         sid = self._str_to_id.get(subject)
         if sid is None:

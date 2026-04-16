@@ -4,8 +4,7 @@
 
 from rdflib import XSD, Dataset, Graph, Literal, URIRef
 
-from triplelite import RDFTerm, TripleLite, from_rdflib, to_rdflib
-from triplelite._rdflib_bridge import _rdflib_to_rdfterm
+from triplelite import RDFTerm, TripleLite, from_rdflib, rdflib_to_rdfterm, to_rdflib
 
 URI_A = "http://example.org/a"
 URI_B = "http://example.org/b"
@@ -345,6 +344,31 @@ class TestSubjects:
         assert list(g.subjects(PRED_2, OBJ_URI)) == []
 
 
+class TestHasSubject:
+    def test_present(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        assert g.has_subject(URI_A)
+
+    def test_absent(self):
+        g = TripleLite()
+        assert not g.has_subject(URI_A)
+
+    def test_after_remove_all_triples(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.remove((URI_A, PRED_1, OBJ_URI))
+        assert not g.has_subject(URI_A)
+
+    def test_multiple_subjects(self):
+        g = TripleLite()
+        g.add((URI_A, PRED_1, OBJ_URI))
+        g.add((URI_B, PRED_1, OBJ_LIT))
+        assert g.has_subject(URI_A)
+        assert g.has_subject(URI_B)
+        assert not g.has_subject(URI_C)
+
+
 class TestSubgraph:
     def test_extracts_subject_triples(self):
         g = TripleLite()
@@ -454,24 +478,24 @@ class TestRdflibCompat:
         assert (URIRef(URI_A), URIRef(PRED_1), URIRef("http://example.org/obj")) in result
 
     def test_rdflib_to_rdfterm_uri(self):
-        term = _rdflib_to_rdfterm(URIRef("http://example.org/x"))
+        term = rdflib_to_rdfterm(URIRef("http://example.org/x"))
         assert term == RDFTerm("uri", "http://example.org/x")
 
     def test_rdflib_to_rdfterm_literal(self):
-        term = _rdflib_to_rdfterm(Literal("test", datatype=XSD.string))
+        term = rdflib_to_rdfterm(Literal("test", datatype=XSD.string))
         assert term == RDFTerm("literal", "test", str(XSD.string))
 
     def test_rdflib_to_rdfterm_literal_lang(self):
-        term = _rdflib_to_rdfterm(Literal("ciao", lang="it"))
+        term = rdflib_to_rdfterm(Literal("ciao", lang="it"))
         assert term.lang == "it"
         assert term.type == "literal"
 
     def test_rdflib_to_rdfterm_passthrough(self):
         term = RDFTerm("uri", "http://x")
-        assert _rdflib_to_rdfterm(term) is term
+        assert rdflib_to_rdfterm(term) is term
 
     def test_rdflib_to_rdfterm_untyped_literal(self):
-        term = _rdflib_to_rdfterm(Literal("plain"))
+        term = rdflib_to_rdfterm(Literal("plain"))
         assert term.datatype == "http://www.w3.org/2001/XMLSchema#string"
 
     def test_to_rdflib_integer_literal(self):

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-_XSD_STRING = "http://www.w3.org/2001/XMLSchema#string"
+XSD_STRING = "http://www.w3.org/2001/XMLSchema#string"
 
 
 class RDFTerm(NamedTuple):

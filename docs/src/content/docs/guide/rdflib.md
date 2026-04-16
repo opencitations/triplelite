@@ -5,6 +5,24 @@ description: Converting between TripleLite and rdflib
 
 Requires the `rdflib` extra (`pip install triplelite[rdflib]`).
 
+## Converting rdflib terms
+
+`rdflib_to_rdfterm()` converts an rdflib `URIRef`, `Literal`, or `BNode` into an `RDFTerm`. If the input is already an `RDFTerm`, it is returned as-is. Untyped literals default to `xsd:string`:
+
+```python
+from rdflib import URIRef, Literal, XSD
+from triplelite import rdflib_to_rdfterm
+
+rdflib_to_rdfterm(URIRef("http://example.org/x"))
+# RDFTerm(type='uri', value='http://example.org/x', datatype='', lang='')
+
+rdflib_to_rdfterm(Literal("ciao", lang="it"))
+# RDFTerm(type='literal', value='ciao', datatype='', lang='it')
+
+rdflib_to_rdfterm(Literal(42, datatype=XSD.integer))
+# RDFTerm(type='literal', value='42', datatype='http://www.w3.org/2001/XMLSchema#integer', lang='')
+```
+
 ## Exporting to rdflib
 
 `to_rdflib()` converts a TripleLite to an rdflib object. If the graph has an identifier, it returns a `Dataset` (quads). Otherwise, it returns a `Graph` (triples). Also available as a method on `TripleLite`:

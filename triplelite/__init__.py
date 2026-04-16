@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: ISC
 
 from triplelite._graph import TripleLite
-from triplelite._rdflib_bridge import from_rdflib, to_rdflib
-from triplelite._types import _XSD_STRING, POSIndex, RDFTerm, SPOIndex, Triple
+from triplelite._rdflib_bridge import from_rdflib, rdflib_to_rdfterm, to_rdflib
+from triplelite._types import XSD_STRING, POSIndex, RDFTerm, SPOIndex, Triple
 
 __all__ = [
     "TripleLite",
@@ -12,7 +12,8 @@ __all__ = [
     "RDFTerm",
     "SPOIndex",
     "Triple",
-    "_XSD_STRING",
+    "XSD_STRING",
     "from_rdflib",
+    "rdflib_to_rdfterm",
     "to_rdflib",
 ]

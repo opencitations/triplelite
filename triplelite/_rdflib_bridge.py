@@ -8,18 +8,18 @@ from typing import TYPE_CHECKING
 
 from rdflib import BNode, Dataset, Graph, Literal, Node, URIRef
 
-from triplelite._types import _XSD_STRING, RDFTerm
+from triplelite._types import XSD_STRING, RDFTerm
 
 if TYPE_CHECKING:
     from triplelite._graph import TripleLite
 
 
-def _rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
+def rdflib_to_rdfterm(node: URIRef | Literal | Node | RDFTerm) -> RDFTerm:
     if isinstance(node, RDFTerm):
         return node
     if isinstance(node, Literal):
         language = str(node.language) if node.language else ""
-        datatype = "" if language else (str(node.datatype) if node.datatype else _XSD_STRING)
+        datatype = "" if language else (str(node.datatype) if node.datatype else XSD_STRING)
         return RDFTerm("literal", str(node), datatype, language)
     return RDFTerm("uri", str(node))
 
@@ -38,7 +38,7 @@ def _from_rdflib_graph(graph: Graph) -> TripleLite:
     identifier = str(graph.identifier) if not isinstance(graph.identifier, BNode) else None
     tl = TripleLite(identifier=identifier)
     tl.add_many(
-        (str(subject), str(predicate), _rdflib_to_rdfterm(obj))
+        (str(subject), str(predicate), rdflib_to_rdfterm(obj))
         for subject, predicate, obj in graph
     )
     return tl

@@ -19,7 +19,7 @@ class RDFTerm(NamedTuple):
     lang: str       # language tag (default "")
 ```
 
-`datatype` and `lang` only apply to literals. A typed literal carries a datatype URI; a language-tagged literal carries a tag and no datatype:
+`datatype` and `lang` only apply to literals. A typed literal carries a datatype URI; a language-tagged literal carries a tag and no datatype. The constant `XSD_STRING` (`"http://www.w3.org/2001/XMLSchema#string"`) is the default datatype assigned to untyped literals:
 
 ```python
 from triplelite import RDFTerm
