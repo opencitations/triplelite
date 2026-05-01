@@ -1,6 +1,8 @@
 py.extension_module(
     '_core',
     '_core.c',
+    'dynarray.c',
+    'hashmap.c',
     subdir: 'triplelite',
     install: true,
 )
