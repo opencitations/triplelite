@@ -4,6 +4,8 @@ py.extension_module(
     'dynarray.c',
     'hashmap.c',
     'rdfterm_hashmap.c',
+    'intset.c',
+    'spo_index.c',
     subdir: 'triplelite',
     install: true,
 )
