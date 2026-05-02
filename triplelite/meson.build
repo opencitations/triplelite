@@ -3,6 +3,7 @@ py.extension_module(
     '_core.c',
     'dynarray.c',
     'hashmap.c',
+    'rdfterm_hashmap.c',
     subdir: 'triplelite',
     install: true,
 )

@@ -13,19 +13,19 @@ int hashmap_init(HashMap *map, size_t n_buckets)
     return 0;
 }
 
-static size_t hashmap_hash(const char *key, size_t n_buckets)
+size_t hash_string(const char *s)
 {
     size_t hash = 5381;
     int c;
-    while ((c = *key++)) {
+    while ((c = *s++)) {
         hash = ((hash << 5) + hash) + c;
     }
-    return hash % n_buckets;
+    return hash;
 }
 
 int hashmap_get(HashMap *map, const char *key, size_t *out)
 {
-    size_t idx = hashmap_hash(key, map->n_buckets);
+    size_t idx = hash_string(key) % map->n_buckets;
     HashEntry *entry = map->buckets[idx];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {
@@ -39,7 +39,7 @@ int hashmap_get(HashMap *map, const char *key, size_t *out)
 
 int hashmap_put(HashMap *map, const char *key, size_t value)
 {
-    size_t idx = hashmap_hash(key, map->n_buckets);
+    size_t idx = hash_string(key) % map->n_buckets;
     HashEntry *entry = map->buckets[idx];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {
