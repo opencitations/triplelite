@@ -141,13 +141,12 @@ class TestRemove:
         g.add((URI_B, PRED_2, OBJ_LIT))
         g.remove((None, None, None))
         assert len(g) == 0
-        assert g._spo == {}
 
     def test_remove_cleans_empty_dicts(self):
         g = TripleLite()
         g.add((URI_A, PRED_1, OBJ_URI))
         g.remove((URI_A, PRED_1, OBJ_URI))
-        assert g._str_to_id[URI_A] not in g._spo
+        assert not g.has_subject(URI_A)
 
     def test_remove_updates_reverse_index(self):
         g = TripleLite(reverse_index_predicates=frozenset({PRED_1}))

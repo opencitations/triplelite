@@ -39,6 +39,9 @@ dev = [
 requires = ["meson-python>=0.18", "meson>=1.10"]
 build-backend = "mesonpy"
 
+[tool.pyright]
+reportMissingModuleSource = false
+
 [tool.ruff.lint]
 select = ["I", "TID", "PLC0415"]
 

@@ -127,8 +127,7 @@ class TestSPOPOSConsistency:
         subject = triple_list[0][0]
         sub = g.subgraph(subject)
         if sub is None:
-            sid = g._str_to_id.get(subject)
-            assert sid is None or sid not in g._spo
+            assert not g.has_subject(subject)
             return
 
         expected = set(g.triples((subject, None, None)))

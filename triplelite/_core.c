@@ -4,6 +4,8 @@
 #include "rdfterm_hashmap.h"
 #include "spo_index.h"
 
+static PyObject *RDFTermType = NULL;
+
 typedef struct {
     HashMap str_to_id;
     StringArray id_to_str;
@@ -80,6 +82,12 @@ static void rdfterm_interner_free(RDFTermInterner *interner)
     rdfterm_array_free(&interner->id_to_rdfterm);
 }
 
+static PyObject *make_rdfterm(RDFTerm *term)
+{
+    return PyObject_CallFunction(RDFTermType, "ssss",
+                                 term->type, term->value, term->datatype, term->lang);
+}
+
 #define NO_FILTER ((size_t)-1)
 
 typedef struct {
@@ -111,7 +119,7 @@ static PyObject *make_triple(TripleLiteObject *store, size_t subject_id, size_t 
     const char *subject_str = store->strings.id_to_str.items[subject_id];
     const char *predicate_str = store->strings.id_to_str.items[predicate_id];
     RDFTerm *object_term = &store->terms.id_to_rdfterm.items[object_id];
-    PyObject *term_tuple = Py_BuildValue("(ssss)", object_term->type, object_term->value, object_term->datatype, object_term->lang);
+    PyObject *term_tuple = make_rdfterm(object_term);
     if (term_tuple == NULL) {
         return NULL;
     }
@@ -378,7 +386,7 @@ static PyObject *TripleLite_objects(TripleLiteObject *self, PyObject *args, PyOb
                     for (size_t i = 0; i < object_set->n_slots; i++) {
                         if (object_set->occupied[i]) {
                             RDFTerm *object_term = &terms->items[object_set->slots[i]];
-                            PyObject *term = Py_BuildValue("(ssss)", object_term->type, object_term->value, object_term->datatype, object_term->lang);
+                            PyObject *term = make_rdfterm(object_term);
                             if (term == NULL || PyList_Append(result, term) < 0) {
                                 Py_XDECREF(term);
                                 Py_DECREF(result);
@@ -433,7 +441,12 @@ static PyObject *TripleLite_predicate_objects(TripleLiteObject *self, PyObject *
                     for (size_t i = 0; i < object_set->n_slots; i++) {
                         if (object_set->occupied[i]) {
                             RDFTerm *object_term = &terms->items[object_set->slots[i]];
-                            PyObject *pair = Py_BuildValue("(s(ssss))", predicate_str, object_term->type, object_term->value, object_term->datatype, object_term->lang);
+                            PyObject *term = make_rdfterm(object_term);
+                            if (term == NULL) {
+                                Py_DECREF(result);
+                                return NULL;
+                            }
+                            PyObject *pair = Py_BuildValue("(sN)", predicate_str, term);
                             if (pair == NULL || PyList_Append(result, pair) < 0) {
                                 Py_XDECREF(pair);
                                 Py_DECREF(result);
@@ -667,6 +680,7 @@ static PyTypeObject TripleLiteType = {
     .tp_name = "triplelite._core.TripleLite",
     .tp_basicsize = sizeof(TripleLiteObject),
     .tp_dealloc = (destructor)TripleLite_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_iter = (getiterfunc)TripleLite_iter,
     .tp_as_sequence = &TripleLite_as_sequence,
     .tp_methods = TripleLite_methods,
@@ -689,6 +703,15 @@ static struct PyModuleDef core_module = {
 PyMODINIT_FUNC
 PyInit__core(void)
 {
+    PyObject *types_module = PyImport_ImportModule("triplelite._types");
+    if (types_module == NULL) {
+        return NULL;
+    }
+    RDFTermType = PyObject_GetAttrString(types_module, "RDFTerm");
+    Py_DECREF(types_module);
+    if (RDFTermType == NULL) {
+        return NULL;
+    }
     if (PyType_Ready(&TripleLiteIterType) < 0 ||
         PyType_Ready(&TripleLiteType) < 0) {
         return NULL;
