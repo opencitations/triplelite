@@ -1,35 +1,30 @@
+/* SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+ * SPDX-License-Identifier: ISC */
+
 #ifndef SPO_INDEX_H
 #define SPO_INDEX_H
 
-#include <stddef.h>
+#include "oa_hash.h"
 #include "intset.h"
 
-typedef struct PredEntry {
+#define SPO_EMPTY SIZE_MAX
+
+typedef struct {
     size_t pred_id;
     IntSet objects;
-    struct PredEntry *next;
-} PredEntry;
+} PredSlot;
+
+typedef OATable PredMap;
 
 typedef struct {
-    PredEntry **buckets;
-    size_t n_buckets;
-    size_t len;
-} PredMap;
-
-typedef struct SubjEntry {
     size_t subj_id;
     PredMap predicates;
-    struct SubjEntry *next;
-} SubjEntry;
+} SubjSlot;
 
-typedef struct {
-    SubjEntry **buckets;
-    size_t n_buckets;
-    size_t len;
-} SPOIndex;
+typedef OATable SPOIndex;
 
-int spo_init(SPOIndex *index, size_t n_buckets);
-SubjEntry *spo_find(SPOIndex *index, size_t subject_id);
+int spo_init(SPOIndex *index, size_t n_slots);
+SubjSlot *spo_find(SPOIndex *index, size_t subject_id);
 int spo_add(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
 int spo_contains(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
 int spo_remove(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);

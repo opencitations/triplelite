@@ -1,115 +1,80 @@
+/* SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+ * SPDX-License-Identifier: ISC */
+
 #include "rdfterm_hashmap.h"
-#include "hashmap.h"
-#include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
 
-static size_t rdfterm_hash(const RDFTerm *term)
+#define RDFTERM_EMPTY SIZE_MAX
+
+static int is_empty(const void *slot)
 {
-    size_t hash = hash_string(term->type);
-    hash = hash * 31 + hash_string(term->value);
-    hash = hash * 31 + hash_string(term->datatype);
-    hash = hash * 31 + hash_string(term->lang);
-    return hash;
+    return ((const RDFTermSlot *)slot)->key.type_id == RDFTERM_EMPTY;
 }
 
-static int rdfterm_equal(const RDFTerm *a, const RDFTerm *b)
+static void set_empty(void *slot)
 {
-    return strcmp(a->type, b->type) == 0 &&
-           strcmp(a->value, b->value) == 0 &&
-           strcmp(a->datatype, b->datatype) == 0 &&
-           strcmp(a->lang, b->lang) == 0;
+    ((RDFTermSlot *)slot)->key.type_id = RDFTERM_EMPTY;
 }
 
-int rdfterm_hashmap_init(RDFTermHashMap *map, size_t n_buckets)
+static size_t hash(const void *slot)
 {
-    map->buckets = calloc(n_buckets, sizeof(RDFTermHashEntry *));
-    if (map->buckets == NULL) {
-        return -1;
-    }
-    map->n_buckets = n_buckets;
-    map->len = 0;
-    return 0;
+    const RDFTerm *k = &((const RDFTermSlot *)slot)->key;
+    size_t h = k->type_id;
+    h = h * 31 + k->value_id;
+    h = h * 31 + k->datatype_id;
+    h = h * 31 + k->lang_id;
+    return h;
+}
+
+static int equal(const void *a, const void *b)
+{
+    const RDFTerm *ka = &((const RDFTermSlot *)a)->key;
+    const RDFTerm *kb = &((const RDFTermSlot *)b)->key;
+    return ka->type_id == kb->type_id &&
+           ka->value_id == kb->value_id &&
+           ka->datatype_id == kb->datatype_id &&
+           ka->lang_id == kb->lang_id;
+}
+
+static const OAOps rdfterm_ops = {
+    sizeof(RDFTermSlot), is_empty, set_empty, hash, equal, NULL
+};
+
+int rdfterm_hashmap_init(RDFTermHashMap *map, size_t n_slots)
+{
+    return oa_init(map, n_slots, &rdfterm_ops);
 }
 
 int rdfterm_hashmap_get(RDFTermHashMap *map, const RDFTerm *key, size_t *out)
 {
-    size_t bucket = rdfterm_hash(key) % map->n_buckets;
-    RDFTermHashEntry *entry = map->buckets[bucket];
-    while (entry != NULL) {
-        if (rdfterm_equal(&entry->key, key)) {
-            *out = entry->value;
-            return 1;
-        }
-        entry = entry->next;
-    }
-    return 0;
-}
-
-static int rdfterm_hashmap_resize(RDFTermHashMap *map)
-{
-    size_t new_n_buckets = map->n_buckets * 2;
-    RDFTermHashEntry **new_buckets = calloc(new_n_buckets, sizeof(RDFTermHashEntry *));
-    if (new_buckets == NULL) {
-        return -1;
-    }
-    for (size_t i = 0; i < map->n_buckets; i++) {
-        RDFTermHashEntry *entry = map->buckets[i];
-        while (entry != NULL) {
-            RDFTermHashEntry *next = entry->next;
-            size_t bucket = rdfterm_hash(&entry->key) % new_n_buckets;
-            entry->next = new_buckets[bucket];
-            new_buckets[bucket] = entry;
-            entry = next;
-        }
-    }
-    free(map->buckets);
-    map->buckets = new_buckets;
-    map->n_buckets = new_n_buckets;
-    return 0;
+    RDFTermSlot search = {*key, 0};
+    RDFTermSlot *found = oa_find(map, &search, &rdfterm_ops);
+    if (found == NULL)
+        return 0;
+    *out = found->value;
+    return 1;
 }
 
 int rdfterm_hashmap_put(RDFTermHashMap *map, const RDFTerm *key, size_t value)
 {
-    size_t bucket = rdfterm_hash(key) % map->n_buckets;
-    RDFTermHashEntry *entry = map->buckets[bucket];
-    while (entry != NULL) {
-        if (rdfterm_equal(&entry->key, key)) {
-            entry->value = value;
-            return 0;
-        }
-        entry = entry->next;
-    }
-    if (map->len * 4 >= map->n_buckets * 3) {
-        if (rdfterm_hashmap_resize(map) < 0) {
+    if (map->len * 4 >= map->n_slots * 3) {
+        if (oa_grow(map, &rdfterm_ops) < 0)
             return -1;
-        }
-        bucket = rdfterm_hash(key) % map->n_buckets;
     }
-    RDFTermHashEntry *new_entry = malloc(sizeof(RDFTermHashEntry));
-    if (new_entry == NULL) {
-        return -1;
+    RDFTermSlot search = {*key, 0};
+    size_t idx = oa_probe(map, &search, &rdfterm_ops);
+    RDFTermSlot *slot = (RDFTermSlot *)map->slots + idx;
+    if (slot->key.type_id != RDFTERM_EMPTY) {
+        slot->value = value;
+        return 0;
     }
-    if (rdfterm_copy(&new_entry->key, key) < 0) {
-        free(new_entry);
-        return -1;
-    }
-    new_entry->value = value;
-    new_entry->next = map->buckets[bucket];
-    map->buckets[bucket] = new_entry;
+    slot->key = *key;
+    slot->value = value;
     map->len++;
     return 0;
 }
 
 void rdfterm_hashmap_free(RDFTermHashMap *map)
 {
-    for (size_t i = 0; i < map->n_buckets; i++) {
-        RDFTermHashEntry *entry = map->buckets[i];
-        while (entry != NULL) {
-            RDFTermHashEntry *next = entry->next;
-            rdfterm_free_fields(&entry->key);
-            free(entry);
-            entry = next;
-        }
-    }
-    free(map->buckets);
+    oa_free(map, &rdfterm_ops);
 }

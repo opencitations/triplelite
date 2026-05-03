@@ -1,22 +1,19 @@
+/* SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+ * SPDX-License-Identifier: ISC */
+
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
-#include <stddef.h>
-
-typedef struct HashEntry {
-    const char *key;
-    size_t value;
-    struct HashEntry *next;
-} HashEntry;
+#include "oa_hash.h"
 
 typedef struct {
-    HashEntry **buckets;
-    size_t n_buckets;
-    size_t len;
-} HashMap;
+    const char *key;
+    size_t value;
+} HashSlot;
 
-size_t hash_string(const char *s);
-int hashmap_init(HashMap *map, size_t n_buckets);
+typedef OATable HashMap;
+
+int hashmap_init(HashMap *map, size_t n_slots);
 int hashmap_get(HashMap *map, const char *key, size_t *out);
 int hashmap_put(HashMap *map, const char *key, size_t value);
 void hashmap_free(HashMap *map);

@@ -1,6 +1,7 @@
 py.extension_module(
     '_core',
     '_core.c',
+    'oa_hash.c',
     'dynarray.c',
     'hashmap.c',
     'rdfterm_hashmap.c',

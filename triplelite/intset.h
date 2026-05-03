@@ -1,14 +1,19 @@
+/* SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+ * SPDX-License-Identifier: ISC */
+
 #ifndef INTSET_H
 #define INTSET_H
 
-#include <stddef.h>
+#include "oa_hash.h"
+#include <stdint.h>
+
+#define INTSET_EMPTY SIZE_MAX
 
 typedef struct {
-    size_t *slots;
-    char *occupied;
-    size_t n_slots;
-    size_t len;
-} IntSet;
+    size_t value;
+} IntSetSlot;
+
+typedef OATable IntSet;
 
 int intset_init(IntSet *set, size_t n_slots);
 int intset_add(IntSet *set, size_t value);

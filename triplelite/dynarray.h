@@ -4,10 +4,10 @@
 #include <stddef.h>
 
 typedef struct {
-    const char *type;
-    const char *value;
-    const char *datatype;
-    const char *lang;
+    size_t type_id;
+    size_t value_id;
+    size_t datatype_id;
+    size_t lang_id;
 } RDFTerm;
 
 typedef struct {
@@ -28,7 +28,5 @@ void string_array_free(StringArray *arr);
 void rdfterm_array_init(RDFTermArray *arr);
 int rdfterm_array_append(RDFTermArray *arr, const RDFTerm *term);
 void rdfterm_array_free(RDFTermArray *arr);
-int rdfterm_copy(RDFTerm *dst, const RDFTerm *src);
-void rdfterm_free_fields(RDFTerm *term);
 
 #endif
