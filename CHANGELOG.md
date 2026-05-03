@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 # [1.2.0](https://github.com/opencitations/triplelite/compare/v1.1.0...v1.2.0) (2026-04-16)
 
 

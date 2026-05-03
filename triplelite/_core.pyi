@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+#
+# SPDX-License-Identifier: ISC
+
 from collections.abc import Iterable, Iterator
 
 from triplelite._types import RDFTerm

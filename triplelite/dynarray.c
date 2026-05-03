@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
+ *
+ * SPDX-License-Identifier: ISC
+ */
+
 #include "dynarray.h"
 #include <stdlib.h>
 #include <string.h>
