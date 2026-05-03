@@ -19,5 +19,6 @@ typedef struct {
 int rdfterm_hashmap_init(RDFTermHashMap *map, size_t n_buckets);
 int rdfterm_hashmap_get(RDFTermHashMap *map, const RDFTerm *key, size_t *out);
 int rdfterm_hashmap_put(RDFTermHashMap *map, const RDFTerm *key, size_t value);
+void rdfterm_hashmap_free(RDFTermHashMap *map);
 
 #endif

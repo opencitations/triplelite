@@ -25,8 +25,8 @@ size_t hash_string(const char *s)
 
 int hashmap_get(HashMap *map, const char *key, size_t *out)
 {
-    size_t idx = hash_string(key) % map->n_buckets;
-    HashEntry *entry = map->buckets[idx];
+    size_t bucket = hash_string(key) % map->n_buckets;
+    HashEntry *entry = map->buckets[bucket];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {
             *out = entry->value;
@@ -39,8 +39,8 @@ int hashmap_get(HashMap *map, const char *key, size_t *out)
 
 int hashmap_put(HashMap *map, const char *key, size_t value)
 {
-    size_t idx = hash_string(key) % map->n_buckets;
-    HashEntry *entry = map->buckets[idx];
+    size_t bucket = hash_string(key) % map->n_buckets;
+    HashEntry *entry = map->buckets[bucket];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {
             entry->value = value;
@@ -52,10 +52,28 @@ int hashmap_put(HashMap *map, const char *key, size_t value)
     if (new_entry == NULL) {
         return -1;
     }
-    new_entry->key = key;
+    new_entry->key = strdup(key);
+    if (new_entry->key == NULL) {
+        free(new_entry);
+        return -1;
+    }
     new_entry->value = value;
-    new_entry->next = map->buckets[idx];
-    map->buckets[idx] = new_entry;
+    new_entry->next = map->buckets[bucket];
+    map->buckets[bucket] = new_entry;
     map->len++;
     return 0;
+}
+
+void hashmap_free(HashMap *map)
+{
+    for (size_t i = 0; i < map->n_buckets; i++) {
+        HashEntry *entry = map->buckets[i];
+        while (entry != NULL) {
+            HashEntry *next = entry->next;
+            free((char *)entry->key);
+            free(entry);
+            entry = next;
+        }
+    }
+    free(map->buckets);
 }

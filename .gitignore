@@ -9,4 +9,6 @@ coverage.xml
 htmlcov/
 badge.svg
 builddir/
+build/
 settings.json
+.clangd

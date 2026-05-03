@@ -29,28 +29,28 @@ static size_t intset_probe(IntSet *set, size_t value)
 
 static int intset_grow(IntSet *set)
 {
-    size_t old_n = set->n_slots;
+    size_t old_capacity = set->n_slots;
     size_t *old_slots = set->slots;
     char *old_occupied = set->occupied;
 
-    size_t new_n = old_n * 2;
-    set->slots = malloc(new_n * sizeof(size_t));
+    size_t new_capacity = old_capacity * 2;
+    set->slots = malloc(new_capacity * sizeof(size_t));
     if (set->slots == NULL) {
         set->slots = old_slots;
         set->occupied = old_occupied;
         return -1;
     }
-    set->occupied = calloc(new_n, sizeof(char));
+    set->occupied = calloc(new_capacity, sizeof(char));
     if (set->occupied == NULL) {
         free(set->slots);
         set->slots = old_slots;
         set->occupied = old_occupied;
         return -1;
     }
-    set->n_slots = new_n;
+    set->n_slots = new_capacity;
     set->len = 0;
 
-    for (size_t i = 0; i < old_n; i++) {
+    for (size_t i = 0; i < old_capacity; i++) {
         if (old_occupied[i]) {
             size_t idx = intset_probe(set, old_slots[i]);
             set->slots[idx] = old_slots[i];

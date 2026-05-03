@@ -19,5 +19,6 @@ size_t hash_string(const char *s);
 int hashmap_init(HashMap *map, size_t n_buckets);
 int hashmap_get(HashMap *map, const char *key, size_t *out);
 int hashmap_put(HashMap *map, const char *key, size_t value);
+void hashmap_free(HashMap *map);
 
 #endif

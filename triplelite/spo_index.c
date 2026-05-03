@@ -1,196 +1,248 @@
 #include "spo_index.h"
 #include <stdlib.h>
 
-int spo_init(SPOIndex *idx, size_t n_buckets)
+static void predmap_free(PredMap *pred_map);
+
+int spo_init(SPOIndex *index, size_t n_buckets)
 {
-    idx->buckets = calloc(n_buckets, sizeof(SubjEntry *));
-    if (idx->buckets == NULL) {
+    index->buckets = calloc(n_buckets, sizeof(SubjEntry *));
+    if (index->buckets == NULL) {
         return -1;
     }
-    idx->n_buckets = n_buckets;
-    idx->len = 0;
+    index->n_buckets = n_buckets;
+    index->len = 0;
     return 0;
 }
 
-static PredEntry *predmap_find(PredMap *pm, size_t pred_id)
+static PredEntry *predmap_find(PredMap *pred_map, size_t predicate_id)
 {
-    size_t slot = pred_id % pm->n_buckets;
-    PredEntry *e = pm->buckets[slot];
-    while (e != NULL) {
-        if (e->pred_id == pred_id) {
-            return e;
+    size_t slot = predicate_id % pred_map->n_buckets;
+    PredEntry *entry = pred_map->buckets[slot];
+    while (entry != NULL) {
+        if (entry->pred_id == predicate_id) {
+            return entry;
         }
-        e = e->next;
+        entry = entry->next;
     }
     return NULL;
 }
 
-static PredEntry *predmap_get_or_create(PredMap *pm, size_t pred_id)
+static PredEntry *predmap_get_or_create(PredMap *pred_map, size_t predicate_id)
 {
-    size_t slot = pred_id % pm->n_buckets;
-    PredEntry *e = pm->buckets[slot];
-    while (e != NULL) {
-        if (e->pred_id == pred_id) {
-            return e;
+    size_t slot = predicate_id % pred_map->n_buckets;
+    PredEntry *entry = pred_map->buckets[slot];
+    while (entry != NULL) {
+        if (entry->pred_id == predicate_id) {
+            return entry;
         }
-        e = e->next;
+        entry = entry->next;
     }
-    e = malloc(sizeof(PredEntry));
-    if (e == NULL) {
+    entry = malloc(sizeof(PredEntry));
+    if (entry == NULL) {
         return NULL;
     }
-    if (intset_init(&e->objects, 4) < 0) {
-        free(e);
+    if (intset_init(&entry->objects, 4) < 0) {
+        free(entry);
         return NULL;
     }
-    e->pred_id = pred_id;
-    e->next = pm->buckets[slot];
-    pm->buckets[slot] = e;
-    pm->len++;
-    return e;
+    entry->pred_id = predicate_id;
+    entry->next = pred_map->buckets[slot];
+    pred_map->buckets[slot] = entry;
+    pred_map->len++;
+    return entry;
 }
 
-static int predmap_init(PredMap *pm, size_t n_buckets)
+static int predmap_init(PredMap *pred_map, size_t n_buckets)
 {
-    pm->buckets = calloc(n_buckets, sizeof(PredEntry *));
-    if (pm->buckets == NULL) {
+    pred_map->buckets = calloc(n_buckets, sizeof(PredEntry *));
+    if (pred_map->buckets == NULL) {
         return -1;
     }
-    pm->n_buckets = n_buckets;
-    pm->len = 0;
+    pred_map->n_buckets = n_buckets;
+    pred_map->len = 0;
     return 0;
 }
 
-static SubjEntry *spo_find(SPOIndex *idx, size_t subj_id)
+static SubjEntry *spo_find(SPOIndex *index, size_t subject_id)
 {
-    size_t slot = subj_id % idx->n_buckets;
-    SubjEntry *e = idx->buckets[slot];
-    while (e != NULL) {
-        if (e->subj_id == subj_id) {
-            return e;
+    size_t slot = subject_id % index->n_buckets;
+    SubjEntry *entry = index->buckets[slot];
+    while (entry != NULL) {
+        if (entry->subj_id == subject_id) {
+            return entry;
         }
-        e = e->next;
+        entry = entry->next;
     }
     return NULL;
 }
 
-static SubjEntry *spo_get_or_create(SPOIndex *idx, size_t subj_id)
+static SubjEntry *spo_get_or_create(SPOIndex *index, size_t subject_id)
 {
-    size_t slot = subj_id % idx->n_buckets;
-    SubjEntry *e = idx->buckets[slot];
-    while (e != NULL) {
-        if (e->subj_id == subj_id) {
-            return e;
+    size_t slot = subject_id % index->n_buckets;
+    SubjEntry *entry = index->buckets[slot];
+    while (entry != NULL) {
+        if (entry->subj_id == subject_id) {
+            return entry;
         }
-        e = e->next;
+        entry = entry->next;
     }
-    e = malloc(sizeof(SubjEntry));
-    if (e == NULL) {
+    entry = malloc(sizeof(SubjEntry));
+    if (entry == NULL) {
         return NULL;
     }
-    if (predmap_init(&e->predicates, 4) < 0) {
-        free(e);
+    if (predmap_init(&entry->predicates, 4) < 0) {
+        free(entry);
         return NULL;
     }
-    e->subj_id = subj_id;
-    e->next = idx->buckets[slot];
-    idx->buckets[slot] = e;
-    idx->len++;
-    return e;
+    entry->subj_id = subject_id;
+    entry->next = index->buckets[slot];
+    index->buckets[slot] = entry;
+    index->len++;
+    return entry;
 }
 
-int spo_add(SPOIndex *idx, size_t sid, size_t pid, size_t oid)
+int spo_add(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id)
 {
-    SubjEntry *subj = spo_get_or_create(idx, sid);
-    if (subj == NULL) {
+    SubjEntry *subject = spo_get_or_create(index, subject_id);
+    if (subject == NULL) {
         return -1;
     }
-    PredEntry *pred = predmap_get_or_create(&subj->predicates, pid);
-    if (pred == NULL) {
+    PredEntry *predicate = predmap_get_or_create(&subject->predicates, predicate_id);
+    if (predicate == NULL) {
         return -1;
     }
-    return intset_add(&pred->objects, oid);
+    return intset_add(&predicate->objects, object_id);
 }
 
-int spo_contains(SPOIndex *idx, size_t sid, size_t pid, size_t oid)
+int spo_contains(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id)
 {
-    SubjEntry *subj = spo_find(idx, sid);
-    if (subj == NULL) {
+    SubjEntry *subject = spo_find(index, subject_id);
+    if (subject == NULL) {
         return 0;
     }
-    PredEntry *pred = predmap_find(&subj->predicates, pid);
-    if (pred == NULL) {
+    PredEntry *predicate = predmap_find(&subject->predicates, predicate_id);
+    if (predicate == NULL) {
         return 0;
     }
-    return intset_contains(&pred->objects, oid);
+    return intset_contains(&predicate->objects, object_id);
 }
 
-int spo_remove(SPOIndex *idx, size_t sid, size_t pid, size_t oid)
+static void predmap_remove_entry(PredMap *pred_map, size_t predicate_id)
 {
-    SubjEntry *subj = spo_find(idx, sid);
-    if (subj == NULL) {
+    size_t slot = predicate_id % pred_map->n_buckets;
+    PredEntry *prev = NULL;
+    PredEntry *entry = pred_map->buckets[slot];
+    while (entry != NULL) {
+        if (entry->pred_id == predicate_id) {
+            if (prev == NULL) {
+                pred_map->buckets[slot] = entry->next;
+            } else {
+                prev->next = entry->next;
+            }
+            intset_free(&entry->objects);
+            free(entry);
+            pred_map->len--;
+            return;
+        }
+        prev = entry;
+        entry = entry->next;
+    }
+}
+
+static void spo_remove_entry(SPOIndex *index, size_t subject_id)
+{
+    size_t slot = subject_id % index->n_buckets;
+    SubjEntry *prev = NULL;
+    SubjEntry *entry = index->buckets[slot];
+    while (entry != NULL) {
+        if (entry->subj_id == subject_id) {
+            if (prev == NULL) {
+                index->buckets[slot] = entry->next;
+            } else {
+                prev->next = entry->next;
+            }
+            predmap_free(&entry->predicates);
+            free(entry);
+            index->len--;
+            return;
+        }
+        prev = entry;
+        entry = entry->next;
+    }
+}
+
+int spo_remove(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id)
+{
+    SubjEntry *subject = spo_find(index, subject_id);
+    if (subject == NULL) {
         return 0;
     }
-    PredEntry *pred = predmap_find(&subj->predicates, pid);
-    if (pred == NULL) {
+    PredEntry *predicate = predmap_find(&subject->predicates, predicate_id);
+    if (predicate == NULL) {
         return 0;
     }
-    if (!intset_contains(&pred->objects, oid)) {
+    if (!intset_contains(&predicate->objects, object_id)) {
         return 0;
     }
-    intset_remove(&pred->objects, oid);
+    intset_remove(&predicate->objects, object_id);
+    if (predicate->objects.len == 0) {
+        predmap_remove_entry(&subject->predicates, predicate_id);
+        if (subject->predicates.len == 0) {
+            spo_remove_entry(index, subject_id);
+        }
+    }
     return 1;
 }
 
-PredMap *spo_get_preds(SPOIndex *idx, size_t sid)
+PredMap *spo_get_preds(SPOIndex *index, size_t subject_id)
 {
-    SubjEntry *subj = spo_find(idx, sid);
-    if (subj == NULL) {
+    SubjEntry *subject = spo_find(index, subject_id);
+    if (subject == NULL) {
         return NULL;
     }
-    return &subj->predicates;
+    return &subject->predicates;
 }
 
-IntSet *spo_get_objects(SPOIndex *idx, size_t sid, size_t pid)
+IntSet *spo_get_objects(SPOIndex *index, size_t subject_id, size_t predicate_id)
 {
-    SubjEntry *subj = spo_find(idx, sid);
-    if (subj == NULL) {
+    SubjEntry *subject = spo_find(index, subject_id);
+    if (subject == NULL) {
         return NULL;
     }
-    PredEntry *pred = predmap_find(&subj->predicates, pid);
-    if (pred == NULL) {
+    PredEntry *predicate = predmap_find(&subject->predicates, predicate_id);
+    if (predicate == NULL) {
         return NULL;
     }
-    return &pred->objects;
+    return &predicate->objects;
 }
 
-static void predmap_free(PredMap *pm)
+static void predmap_free(PredMap *pred_map)
 {
-    for (size_t i = 0; i < pm->n_buckets; i++) {
-        PredEntry *e = pm->buckets[i];
-        while (e != NULL) {
-            PredEntry *next = e->next;
-            intset_free(&e->objects);
-            free(e);
-            e = next;
+    for (size_t i = 0; i < pred_map->n_buckets; i++) {
+        PredEntry *entry = pred_map->buckets[i];
+        while (entry != NULL) {
+            PredEntry *next = entry->next;
+            intset_free(&entry->objects);
+            free(entry);
+            entry = next;
         }
     }
-    free(pm->buckets);
+    free(pred_map->buckets);
 }
 
-void spo_free(SPOIndex *idx)
+void spo_free(SPOIndex *index)
 {
-    for (size_t i = 0; i < idx->n_buckets; i++) {
-        SubjEntry *e = idx->buckets[i];
-        while (e != NULL) {
-            SubjEntry *next = e->next;
-            predmap_free(&e->predicates);
-            free(e);
-            e = next;
+    for (size_t i = 0; i < index->n_buckets; i++) {
+        SubjEntry *entry = index->buckets[i];
+        while (entry != NULL) {
+            SubjEntry *next = entry->next;
+            predmap_free(&entry->predicates);
+            free(entry);
+            entry = next;
         }
     }
-    free(idx->buckets);
-    idx->buckets = NULL;
-    idx->n_buckets = 0;
-    idx->len = 0;
+    free(index->buckets);
+    index->buckets = NULL;
+    index->n_buckets = 0;
+    index->len = 0;
 }

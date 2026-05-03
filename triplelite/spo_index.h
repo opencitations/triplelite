@@ -28,12 +28,12 @@ typedef struct {
     size_t len;
 } SPOIndex;
 
-int spo_init(SPOIndex *idx, size_t n_buckets);
-int spo_add(SPOIndex *idx, size_t sid, size_t pid, size_t oid);
-int spo_contains(SPOIndex *idx, size_t sid, size_t pid, size_t oid);
-int spo_remove(SPOIndex *idx, size_t sid, size_t pid, size_t oid);
-PredMap *spo_get_preds(SPOIndex *idx, size_t sid);
-IntSet *spo_get_objects(SPOIndex *idx, size_t sid, size_t pid);
-void spo_free(SPOIndex *idx);
+int spo_init(SPOIndex *index, size_t n_buckets);
+int spo_add(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
+int spo_contains(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
+int spo_remove(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
+PredMap *spo_get_preds(SPOIndex *index, size_t subject_id);
+IntSet *spo_get_objects(SPOIndex *index, size_t subject_id, size_t predicate_id);
+void spo_free(SPOIndex *index);
 
 #endif
