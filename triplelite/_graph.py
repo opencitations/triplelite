@@ -41,7 +41,24 @@ class SubgraphView:
         return other - set(self)
 
 
+def _rebuild_triplelite(
+    identifier: str | None,
+    reverse_index_predicates: frozenset[str] | None,
+    triples: list[Triple],
+) -> TripleLite:
+    g = TripleLite(identifier=identifier, reverse_index_predicates=reverse_index_predicates)
+    g.add_many(triples)
+    return g
+
+
 class TripleLite(_CTripleLite):
+    def __init__(self, identifier: str | None = None, reverse_index_predicates: frozenset[str] | None = None) -> None:
+        super().__init__(identifier=identifier, reverse_index_predicates=reverse_index_predicates)
+        self._reverse_index_predicates = reverse_index_predicates
+
+    def __reduce__(self) -> tuple:
+        return (_rebuild_triplelite, (self.identifier, self._reverse_index_predicates, list(self)))
+
     def subgraph(self, subject: str) -> SubgraphView | None:
         if not self.has_subject(subject):
             return None
