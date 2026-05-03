@@ -28,6 +28,7 @@ export default defineConfig({
             { label: "Reverse indexing", slug: "guide/indexing" },
             { label: "Subgraph extraction", slug: "guide/subgraph" },
             { label: "rdflib interop", slug: "guide/rdflib" },
+            { label: "Contributing", slug: "guide/contributing" },
           ],
         },
       ],

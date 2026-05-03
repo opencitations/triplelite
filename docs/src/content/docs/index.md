@@ -92,3 +92,4 @@ Both methods deduplicate: adding a triple that already exists is a no-op.
 - [Reverse indexing](/triplelite/guide/indexing/): when to enable it, selective vs full, memory trade-offs
 - [Subgraph extraction](/triplelite/guide/subgraph/): zero-copy views of all triples for a subject
 - [rdflib interop](/triplelite/guide/rdflib/): converting between TripleLite and rdflib
+- [Contributing](/triplelite/guide/contributing/): development setup, project layout, working with Python and C
