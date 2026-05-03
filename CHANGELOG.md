@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/opencitations/triplelite/compare/v1.3.1...v1.4.0) (2026-05-03)
+
+
+### Features
+
+* **_graph:** add pickle support for TripleLite [release] ([4cdd3f1](https://github.com/opencitations/triplelite/commit/4cdd3f1af7b6e1b1ee28e139fc3ea83232bae1e7))
+
 ## [1.3.1](https://github.com/opencitations/triplelite/compare/v1.3.0...v1.3.1) (2026-05-03)
 
 
