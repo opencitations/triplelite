@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/opencitations/triplelite/compare/v1.3.0...v1.3.1) (2026-05-03)
+
+
+### Bug Fixes
+
+* **ci:** drop windows ARM64 wheel builds [release] ([4c6d37d](https://github.com/opencitations/triplelite/commit/4c6d37d10b669e67ba85de266372092aebce8037))
+
 # [1.3.0](https://github.com/opencitations/triplelite/compare/v1.2.0...v1.3.0) (2026-05-03)
 
 
