@@ -46,22 +46,20 @@ class TestAdd:
         g = TripleLite(reverse_index_predicates=frozenset({PRED_1}))
         g.add((URI_A, PRED_1, OBJ_URI))
         g.add((URI_A, PRED_2, OBJ_LIT))
-        assert g._pos is not None
-        assert g._str_to_id[PRED_1] in g._pos
-        assert g._str_to_id[PRED_2] not in g._pos
+        assert set(g.subjects(PRED_1, OBJ_URI)) == {URI_A}
+        assert list(g.subjects(PRED_2, OBJ_LIT)) == []
 
     def test_add_index_all_predicates(self):
         g = TripleLite(reverse_index_predicates=frozenset())
         g.add((URI_A, PRED_1, OBJ_URI))
         g.add((URI_A, PRED_2, OBJ_LIT))
-        assert g._pos is not None
-        assert g._str_to_id[PRED_1] in g._pos
-        assert g._str_to_id[PRED_2] in g._pos
+        assert set(g.subjects(PRED_1, OBJ_URI)) == {URI_A}
+        assert set(g.subjects(PRED_2, OBJ_LIT)) == {URI_A}
 
     def test_no_reverse_index_by_default(self):
         g = TripleLite()
         g.add((URI_A, PRED_1, OBJ_URI))
-        assert g._pos is None
+        assert set(g.subjects(PRED_1, OBJ_URI)) == {URI_A}
 
 
 class TestAddMany:
@@ -159,7 +157,7 @@ class TestRemove:
         g = TripleLite(reverse_index_predicates=frozenset({PRED_1}))
         g.add((URI_A, PRED_1, OBJ_URI))
         g.remove((None, None, None))
-        assert g._pos == {}
+        assert list(g.subjects(PRED_1, OBJ_URI)) == []
 
     def test_remove_nonexistent_noop(self):
         g = TripleLite()

@@ -1,4 +1,5 @@
 #include <Python.h>
+#include <stddef.h>
 #include "dynarray.h"
 #include "hashmap.h"
 #include "rdfterm_hashmap.h"
@@ -95,6 +96,11 @@ typedef struct {
     StringInterner strings;
     RDFTermInterner terms;
     SPOIndex spo;
+    SPOIndex pos;
+    IntSet indexed_preds;
+    int pos_enabled;
+    int index_all_preds;
+    PyObject *identifier;
     Py_ssize_t len;
 } TripleLiteObject;
 
@@ -244,20 +250,84 @@ static PyTypeObject TripleLiteIterType = {
 static void TripleLite_dealloc(TripleLiteObject *self)
 {
     spo_free(&self->spo);
+    if (self->pos_enabled) {
+        spo_free(&self->pos);
+        if (!self->index_all_preds) {
+            intset_free(&self->indexed_preds);
+        }
+    }
     string_interner_free(&self->strings);
     rdfterm_interner_free(&self->terms);
+    Py_XDECREF(self->identifier);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static int TripleLite_init(TripleLiteObject *self, PyObject *args, PyObject *kwds)
 {
+    static char *kwlist[] = {"identifier", "reverse_index_predicates", NULL};
+    PyObject *identifier = Py_None;
+    PyObject *reverse_index_predicates = Py_None;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist,
+                                     &identifier, &reverse_index_predicates)) {
+        return -1;
+    }
+
     if (string_interner_init(&self->strings) < 0 ||
         rdfterm_interner_init(&self->terms) < 0 ||
         spo_init(&self->spo, 16) < 0) {
         PyErr_SetString(PyExc_MemoryError, "Failed to initialize TripleLite");
         return -1;
     }
+
+    Py_INCREF(identifier);
+    self->identifier = identifier;
     self->len = 0;
+    self->pos_enabled = 0;
+    self->index_all_preds = 0;
+
+    if (reverse_index_predicates != Py_None) {
+        self->pos_enabled = 1;
+        if (spo_init(&self->pos, 16) < 0) {
+            PyErr_SetString(PyExc_MemoryError, "Failed to initialize POS index");
+            return -1;
+        }
+        Py_ssize_t size = PyObject_Length(reverse_index_predicates);
+        if (size < 0) return -1;
+        if (size == 0) {
+            self->index_all_preds = 1;
+        } else {
+            self->index_all_preds = 0;
+            if (intset_init(&self->indexed_preds, (size_t)size * 2) < 0) {
+                PyErr_SetString(PyExc_MemoryError, "Failed to initialize indexed predicates");
+                return -1;
+            }
+            PyObject *iter = PyObject_GetIter(reverse_index_predicates);
+            if (iter == NULL) return -1;
+            PyObject *item;
+            while ((item = PyIter_Next(iter)) != NULL) {
+                const char *pred_str = PyUnicode_AsUTF8(item);
+                Py_DECREF(item);
+                if (pred_str == NULL) {
+                    Py_DECREF(iter);
+                    return -1;
+                }
+                size_t pred_id;
+                if (string_interner_get_or_create(&self->strings, pred_str, &pred_id) < 0) {
+                    Py_DECREF(iter);
+                    PyErr_SetString(PyExc_MemoryError, "Failed to intern predicate");
+                    return -1;
+                }
+                if (intset_add(&self->indexed_preds, pred_id) < 0) {
+                    Py_DECREF(iter);
+                    return -1;
+                }
+            }
+            Py_DECREF(iter);
+            if (PyErr_Occurred()) return -1;
+        }
+    }
+
     return 0;
 }
 
@@ -292,7 +362,46 @@ static PyObject *TripleLite_add(TripleLiteObject *self, PyObject *args)
     }
     if (added == 1) {
         self->len++;
+        if (self->pos_enabled) {
+            if (self->index_all_preds || intset_contains(&self->indexed_preds, predicate_id)) {
+                if (spo_add(&self->pos, predicate_id, object_id, subject_id) < 0) {
+                    return PyErr_NoMemory();
+                }
+            }
+        }
     }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *TripleLite_add_many(TripleLiteObject *self, PyObject *args)
+{
+    PyObject *iterable;
+    if (!PyArg_ParseTuple(args, "O", &iterable)) {
+        return NULL;
+    }
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) return NULL;
+
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        PyObject *arg_tuple = PyTuple_Pack(1, item);
+        Py_DECREF(item);
+        if (arg_tuple == NULL) {
+            Py_DECREF(iter);
+            return NULL;
+        }
+        PyObject *result = TripleLite_add(self, arg_tuple);
+        Py_DECREF(arg_tuple);
+        if (result == NULL) {
+            Py_DECREF(iter);
+            return NULL;
+        }
+        Py_DECREF(result);
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) return NULL;
 
     Py_RETURN_NONE;
 }
@@ -495,33 +604,124 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
     PyObject *result = PyList_New(0);
     if (result == NULL) return NULL;
 
-    SPOIndex *spo = &self->spo;
     StringArray *strings = &self->strings.id_to_str;
 
-    for (size_t bucket_idx = 0; bucket_idx < spo->n_buckets; bucket_idx++) {
-        for (SubjEntry *subject_entry = spo->buckets[bucket_idx]; subject_entry != NULL; subject_entry = subject_entry->next) {
-            PredMap *pred_map = &subject_entry->predicates;
-            int found = 0;
-            for (size_t predicate_bucket = 0; predicate_bucket < pred_map->n_buckets && !found; predicate_bucket++) {
-                for (PredEntry *predicate_entry = pred_map->buckets[predicate_bucket]; predicate_entry != NULL && !found; predicate_entry = predicate_entry->next) {
-                    if (predicate_id != NO_FILTER && predicate_entry->pred_id != predicate_id) continue;
-                    IntSet *object_set = &predicate_entry->objects;
-                    if (object_id != NO_FILTER) {
-                        if (intset_contains(object_set, object_id)) found = 1;
-                    } else {
-                        if (object_set->len > 0) found = 1;
+    if (self->pos_enabled) {
+        SPOIndex *pos = &self->pos;
+
+        if (predicate_id != NO_FILTER && object_id != NO_FILTER) {
+            IntSet *subjects = spo_get_objects(pos, predicate_id, object_id);
+            if (subjects != NULL) {
+                for (size_t i = 0; i < subjects->n_slots; i++) {
+                    if (!subjects->occupied[i]) continue;
+                    PyObject *py_str = PyUnicode_FromString(strings->items[subjects->slots[i]]);
+                    if (py_str == NULL || PyList_Append(result, py_str) < 0) {
+                        Py_XDECREF(py_str);
+                        Py_DECREF(result);
+                        return NULL;
+                    }
+                    Py_DECREF(py_str);
+                }
+            }
+        } else if (predicate_id != NO_FILTER) {
+            PredMap *obj_map = spo_get_preds(pos, predicate_id);
+            if (obj_map != NULL) {
+                for (size_t bucket_idx = 0; bucket_idx < obj_map->n_buckets; bucket_idx++) {
+                    for (PredEntry *obj_entry = obj_map->buckets[bucket_idx]; obj_entry != NULL; obj_entry = obj_entry->next) {
+                        IntSet *subjects = &obj_entry->objects;
+                        for (size_t i = 0; i < subjects->n_slots; i++) {
+                            if (!subjects->occupied[i]) continue;
+                            PyObject *py_str = PyUnicode_FromString(strings->items[subjects->slots[i]]);
+                            if (py_str == NULL || PyList_Append(result, py_str) < 0) {
+                                Py_XDECREF(py_str);
+                                Py_DECREF(result);
+                                return NULL;
+                            }
+                            Py_DECREF(py_str);
+                        }
                     }
                 }
             }
-            if (found) {
-                const char *subject_str = strings->items[subject_entry->subj_id];
-                PyObject *py_str = PyUnicode_FromString(subject_str);
-                if (py_str == NULL || PyList_Append(result, py_str) < 0) {
-                    Py_XDECREF(py_str);
-                    Py_DECREF(result);
-                    return NULL;
+        } else if (object_id != NO_FILTER) {
+            for (size_t bucket_idx = 0; bucket_idx < pos->n_buckets; bucket_idx++) {
+                for (SubjEntry *pred_entry = pos->buckets[bucket_idx]; pred_entry != NULL; pred_entry = pred_entry->next) {
+                    IntSet *subjects = spo_get_objects(pos, pred_entry->subj_id, object_id);
+                    if (subjects == NULL) continue;
+                    for (size_t i = 0; i < subjects->n_slots; i++) {
+                        if (!subjects->occupied[i]) continue;
+                        PyObject *py_str = PyUnicode_FromString(strings->items[subjects->slots[i]]);
+                        if (py_str == NULL || PyList_Append(result, py_str) < 0) {
+                            Py_XDECREF(py_str);
+                            Py_DECREF(result);
+                            return NULL;
+                        }
+                        Py_DECREF(py_str);
+                    }
                 }
-                Py_DECREF(py_str);
+            }
+        } else {
+            IntSet seen;
+            if (intset_init(&seen, 16) < 0) {
+                Py_DECREF(result);
+                return PyErr_NoMemory();
+            }
+            for (size_t bucket_idx = 0; bucket_idx < pos->n_buckets; bucket_idx++) {
+                for (SubjEntry *pred_entry = pos->buckets[bucket_idx]; pred_entry != NULL; pred_entry = pred_entry->next) {
+                    PredMap *obj_map = &pred_entry->predicates;
+                    for (size_t object_bucket = 0; object_bucket < obj_map->n_buckets; object_bucket++) {
+                        for (PredEntry *obj_entry = obj_map->buckets[object_bucket]; obj_entry != NULL; obj_entry = obj_entry->next) {
+                            IntSet *subjects = &obj_entry->objects;
+                            for (size_t i = 0; i < subjects->n_slots; i++) {
+                                if (!subjects->occupied[i]) continue;
+                                size_t subject_id = subjects->slots[i];
+                                if (intset_contains(&seen, subject_id)) continue;
+                                if (intset_add(&seen, subject_id) < 0) {
+                                    intset_free(&seen);
+                                    Py_DECREF(result);
+                                    return PyErr_NoMemory();
+                                }
+                                PyObject *py_str = PyUnicode_FromString(strings->items[subject_id]);
+                                if (py_str == NULL || PyList_Append(result, py_str) < 0) {
+                                    Py_XDECREF(py_str);
+                                    intset_free(&seen);
+                                    Py_DECREF(result);
+                                    return NULL;
+                                }
+                                Py_DECREF(py_str);
+                            }
+                        }
+                    }
+                }
+            }
+            intset_free(&seen);
+        }
+    } else {
+        SPOIndex *spo = &self->spo;
+        for (size_t bucket_idx = 0; bucket_idx < spo->n_buckets; bucket_idx++) {
+            for (SubjEntry *subject_entry = spo->buckets[bucket_idx]; subject_entry != NULL; subject_entry = subject_entry->next) {
+                PredMap *pred_map = &subject_entry->predicates;
+                int found = 0;
+                for (size_t predicate_bucket = 0; predicate_bucket < pred_map->n_buckets && !found; predicate_bucket++) {
+                    for (PredEntry *predicate_entry = pred_map->buckets[predicate_bucket]; predicate_entry != NULL && !found; predicate_entry = predicate_entry->next) {
+                        if (predicate_id != NO_FILTER && predicate_entry->pred_id != predicate_id) continue;
+                        IntSet *object_set = &predicate_entry->objects;
+                        if (object_id != NO_FILTER) {
+                            if (intset_contains(object_set, object_id)) found = 1;
+                        } else {
+                            if (object_set->len > 0) found = 1;
+                        }
+                    }
+                }
+                if (found) {
+                    const char *subject_str = strings->items[subject_entry->subj_id];
+                    PyObject *py_str = PyUnicode_FromString(subject_str);
+                    if (py_str == NULL || PyList_Append(result, py_str) < 0) {
+                        Py_XDECREF(py_str);
+                        Py_DECREF(result);
+                        return NULL;
+                    }
+                    Py_DECREF(py_str);
+                }
             }
         }
     }
@@ -543,6 +743,12 @@ static PyObject *TripleLite_remove(TripleLiteObject *self, PyObject *args)
         if (spo_init(&self->spo, 16) < 0) {
             return PyErr_NoMemory();
         }
+        if (self->pos_enabled) {
+            spo_free(&self->pos);
+            if (spo_init(&self->pos, 16) < 0) {
+                return PyErr_NoMemory();
+            }
+        }
         self->len = 0;
         Py_RETURN_NONE;
     }
@@ -560,6 +766,9 @@ static PyObject *TripleLite_remove(TripleLiteObject *self, PyObject *args)
     if (subject_id != NO_FILTER && predicate_id != NO_FILTER && object_id != NO_FILTER) {
         if (spo_remove(&self->spo, subject_id, predicate_id, object_id) == 1) {
             self->len--;
+            if (self->pos_enabled) {
+                spo_remove(&self->pos, predicate_id, object_id, subject_id);
+            }
         }
         Py_RETURN_NONE;
     }
@@ -601,6 +810,9 @@ static PyObject *TripleLite_remove(TripleLiteObject *self, PyObject *args)
     for (size_t i = 0; i < n_remove; i++) {
         if (spo_remove(&self->spo, to_remove[i].subject_id, to_remove[i].predicate_id, to_remove[i].object_id) == 1) {
             self->len--;
+            if (self->pos_enabled) {
+                spo_remove(&self->pos, to_remove[i].predicate_id, to_remove[i].object_id, to_remove[i].subject_id);
+            }
         }
     }
     free(to_remove);
@@ -660,14 +872,20 @@ static Py_ssize_t TripleLite_sq_length(TripleLiteObject *self)
 }
 
 static PyMethodDef TripleLite_methods[] = {
-    {"add", (PyCFunction)TripleLite_add, METH_VARARGS, "Add a triple."},
-    {"remove", (PyCFunction)TripleLite_remove, METH_VARARGS, "Remove triples matching pattern."},
-    {"triples", (PyCFunction)TripleLite_triples, METH_VARARGS, "Query triples by pattern."},
-    {"objects", (PyCFunction)TripleLite_objects, METH_VARARGS | METH_KEYWORDS, "Get objects."},
-    {"predicate_objects", (PyCFunction)TripleLite_predicate_objects, METH_VARARGS | METH_KEYWORDS, "Get predicate-object pairs."},
-    {"subjects", (PyCFunction)TripleLite_subjects, METH_VARARGS | METH_KEYWORDS, "Get subjects."},
-    {"has_subject", (PyCFunction)TripleLite_has_subject, METH_VARARGS, "Check if subject exists."},
+    {"add", (PyCFunction)TripleLite_add, METH_VARARGS, NULL},
+    {"add_many", (PyCFunction)TripleLite_add_many, METH_VARARGS, NULL},
+    {"remove", (PyCFunction)TripleLite_remove, METH_VARARGS, NULL},
+    {"triples", (PyCFunction)TripleLite_triples, METH_VARARGS, NULL},
+    {"objects", (PyCFunction)TripleLite_objects, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"predicate_objects", (PyCFunction)TripleLite_predicate_objects, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"subjects", (PyCFunction)TripleLite_subjects, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"has_subject", (PyCFunction)TripleLite_has_subject, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
+};
+
+static PyMemberDef TripleLite_members[] = {
+    {"identifier", Py_T_OBJECT_EX, offsetof(TripleLiteObject, identifier), 0, NULL},
+    {NULL}
 };
 
 static PySequenceMethods TripleLite_as_sequence = {
@@ -683,6 +901,7 @@ static PyTypeObject TripleLiteType = {
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_iter = (getiterfunc)TripleLite_iter,
     .tp_as_sequence = &TripleLite_as_sequence,
+    .tp_members = TripleLite_members,
     .tp_methods = TripleLite_methods,
     .tp_init = (initproc)TripleLite_init,
     .tp_new = PyType_GenericNew,

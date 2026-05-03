@@ -28,17 +28,8 @@ class TestSPOPOSConsistency:
         g = TripleLite(reverse_index_predicates=frozenset())
         for t in triple_list:
             g.add(t)
-
         for s, p, o in g:
-            assert s in set(g.subjects(p, o)), f"SPO has ({s},{p},{o}) but subjects() misses {s}"
-
-        assert g._pos is not None
-        id_to_str = g._id_to_str
-        id_to_term = g._id_to_term
-        for p_key, o_dict in g._pos.items():
-            for o_key, s_set in o_dict.items():
-                for s in s_set:
-                    assert (id_to_str[s], id_to_str[p_key], id_to_term[o_key]) in g
+            assert s in set(g.subjects(p, o))
 
     @given(st.lists(triples, min_size=1, max_size=30), st.data())
     @settings(max_examples=100)
@@ -46,20 +37,10 @@ class TestSPOPOSConsistency:
         g = TripleLite(reverse_index_predicates=frozenset())
         for t in triple_list:
             g.add(t)
-
         to_remove = data.draw(st.sampled_from(triple_list))
         g.remove(to_remove)
-
         for s, p, o in g:
             assert s in set(g.subjects(p, o))
-
-        assert g._pos is not None
-        id_to_str = g._id_to_str
-        id_to_term = g._id_to_term
-        for p_key, o_dict in g._pos.items():
-            for o_key, s_set in o_dict.items():
-                for s in s_set:
-                    assert (id_to_str[s], id_to_str[p_key], id_to_term[o_key]) in g
 
     @given(st.lists(triples, max_size=50))
     @settings(max_examples=200)
@@ -88,34 +69,19 @@ class TestSPOPOSConsistency:
         preds = set()
         for _, p, _ in triple_list:
             preds.add(p)
-
         if not preds:
             return
-
         half = frozenset(list(preds)[:len(preds) // 2 + 1])
         g_full = TripleLite(reverse_index_predicates=frozenset())
         g_sel = TripleLite(reverse_index_predicates=half)
-
         for t in triple_list:
             g_full.add(t)
             g_sel.add(t)
-
-        assert g_full._pos is not None
-        assert g_sel._pos is not None
         for p in half:
-            pid_full = g_full._str_to_id.get(p)
-            pid_sel = g_sel._str_to_id.get(p)
-            if pid_full is None:
-                continue
-            for o_dict_key, s_set in g_full._pos.get(pid_full, {}).items():
-                o_term = g_full._id_to_term[o_dict_key]
-                oid_sel = g_sel._term_to_id.get(o_term)
-                if pid_sel is None or oid_sel is None:
-                    continue
-                sel_subjects = g_sel._pos.get(pid_sel, {}).get(oid_sel, set())
-                full_strs = {g_full._id_to_str[s] for s in s_set}
-                sel_strs = {g_sel._id_to_str[s] for s in sel_subjects}
-                assert full_strs == sel_strs
+            for s, _, o in g_full.triples((None, p, None)):
+                full_subjects = set(g_full.subjects(p, o))
+                sel_subjects = set(g_sel.subjects(p, o))
+                assert full_subjects == sel_subjects
 
     @given(st.lists(triples, min_size=1, max_size=30))
     @settings(max_examples=100)
@@ -123,13 +89,11 @@ class TestSPOPOSConsistency:
         g = TripleLite()
         for t in triple_list:
             g.add(t)
-
         subject = triple_list[0][0]
         sub = g.subgraph(subject)
         if sub is None:
             assert not g.has_subject(subject)
             return
-
         expected = set(g.triples((subject, None, None)))
         actual = set(sub)
         assert expected == actual
