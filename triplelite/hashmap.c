@@ -4,13 +4,13 @@
 #include "hashmap.h"
 #include <string.h>
 
-static size_t hash_string(const char *s)
+static size_t hash_string(const char *str)
 {
-    size_t h = 5381;
-    int c;
-    while ((c = *s++))
-        h = ((h << 5) + h) + c;
-    return h;
+    size_t hash_value = 5381;
+    int ch;
+    while ((ch = *str++))
+        hash_value = ((hash_value << 5) + hash_value) + ch;
+    return hash_value;
 }
 
 static int is_empty(const void *slot)
@@ -28,9 +28,9 @@ static size_t hash(const void *slot)
     return hash_string(((const HashSlot *)slot)->key);
 }
 
-static int equal(const void *a, const void *b)
+static int equal(const void *slot_a, const void *slot_b)
 {
-    return strcmp(((const HashSlot *)a)->key, ((const HashSlot *)b)->key) == 0;
+    return strcmp(((const HashSlot *)slot_a)->key, ((const HashSlot *)slot_b)->key) == 0;
 }
 
 static const OAOps hashmap_ops = {
@@ -59,8 +59,8 @@ int hashmap_put(HashMap *map, const char *key, size_t value)
             return -1;
     }
     HashSlot search = {key, 0};
-    size_t idx = oa_probe(map, &search, &hashmap_ops);
-    HashSlot *slot = (HashSlot *)map->slots + idx;
+    size_t slot_index = oa_probe(map, &search, &hashmap_ops);
+    HashSlot *slot = (HashSlot *)map->slots + slot_index;
     if (slot->key != NULL) {
         slot->value = value;
         return 0;

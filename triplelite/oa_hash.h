@@ -11,7 +11,7 @@ typedef struct {
     int (*is_empty)(const void *slot);
     void (*set_empty)(void *slot);
     size_t (*hash)(const void *slot);
-    int (*equal)(const void *a, const void *b);
+    int (*equal)(const void *slot_a, const void *slot_b);
     void (*cleanup)(void *slot);
 } OAOps;
 
@@ -21,11 +21,11 @@ typedef struct {
     size_t len;
 } OATable;
 
-int oa_init(OATable *t, size_t n_slots, const OAOps *ops);
-void *oa_find(OATable *t, const void *key, const OAOps *ops);
-size_t oa_probe(OATable *t, const void *key, const OAOps *ops);
-int oa_grow(OATable *t, const OAOps *ops);
-void oa_remove_at(OATable *t, size_t idx, const OAOps *ops);
-void oa_free(OATable *t, const OAOps *ops);
+int oa_init(OATable *table, size_t n_slots, const OAOps *ops);
+void *oa_find(OATable *table, const void *key, const OAOps *ops);
+size_t oa_probe(OATable *table, const void *key, const OAOps *ops);
+int oa_grow(OATable *table, const OAOps *ops);
+void oa_remove_at(OATable *table, size_t slot_index, const OAOps *ops);
+void oa_free(OATable *table, const OAOps *ops);
 
 #endif

@@ -169,33 +169,33 @@ static PyObject *make_triple(TripleLiteObject *store, size_t subject_id, size_t 
 
 static PyObject *create_iterator(TripleLiteObject *store, size_t subject_id, size_t predicate_id, size_t object_id, int exhausted)
 {
-    TripleLiteIterObject *it = PyObject_New(TripleLiteIterObject, &TripleLiteIterType);
-    if (it == NULL) {
+    TripleLiteIterObject *iter = PyObject_New(TripleLiteIterObject, &TripleLiteIterType);
+    if (iter == NULL) {
         return NULL;
     }
     Py_INCREF(store);
-    it->store = store;
-    it->filter_subject_id = subject_id;
-    it->filter_predicate_id = predicate_id;
-    it->filter_object_id = object_id;
-    it->pred_slot = 0;
-    it->obj_slot = 0;
-    it->single_subject = 0;
+    iter->store = store;
+    iter->filter_subject_id = subject_id;
+    iter->filter_predicate_id = predicate_id;
+    iter->filter_object_id = object_id;
+    iter->pred_slot = 0;
+    iter->obj_slot = 0;
+    iter->single_subject = 0;
 
     if (!exhausted && subject_id != NO_FILTER) {
         SubjSlot *entry = spo_find(&store->spo, subject_id);
         if (entry == NULL) {
-            it->exhausted = 1;
+            iter->exhausted = 1;
         } else {
-            it->subj_slot = (size_t)(entry - (SubjSlot *)store->spo.slots);
-            it->single_subject = 1;
-            it->exhausted = 0;
+            iter->subj_slot = (size_t)(entry - (SubjSlot *)store->spo.slots);
+            iter->single_subject = 1;
+            iter->exhausted = 0;
         }
     } else {
-        it->subj_slot = 0;
-        it->exhausted = exhausted;
+        iter->subj_slot = 0;
+        iter->exhausted = exhausted;
     }
-    return (PyObject *)it;
+    return (PyObject *)iter;
 }
 
 static void TripleLiteIter_dealloc(TripleLiteIterObject *self)
@@ -210,67 +210,67 @@ static PyObject *TripleLiteIter_iter(TripleLiteIterObject *self)
     return (PyObject *)self;
 }
 
-static PyObject *TripleLiteIter_next(TripleLiteIterObject *it)
+static PyObject *TripleLiteIter_next(TripleLiteIterObject *self)
 {
-    if (it->exhausted)
+    if (self->exhausted)
         return NULL;
 
-    SPOIndex *spo = &it->store->spo;
+    SPOIndex *spo = &self->store->spo;
     SubjSlot *subj_slots = (SubjSlot *)spo->slots;
-    size_t si = it->subj_slot;
-    size_t pi = it->pred_slot;
-    size_t oi = it->obj_slot;
+    size_t subj_pos = self->subj_slot;
+    size_t pred_pos = self->pred_slot;
+    size_t obj_pos = self->obj_slot;
 
     for (;;) {
-        if (it->single_subject) {
-            if (subj_slots[si].subj_id == SPO_EMPTY) {
-                it->exhausted = 1;
+        if (self->single_subject) {
+            if (subj_slots[subj_pos].subj_id == SPO_EMPTY) {
+                self->exhausted = 1;
                 return NULL;
             }
         } else {
-            while (si < spo->n_slots && subj_slots[si].subj_id == SPO_EMPTY)
-                si++;
-            if (si >= spo->n_slots) {
-                it->exhausted = 1;
+            while (subj_pos < spo->n_slots && subj_slots[subj_pos].subj_id == SPO_EMPTY)
+                subj_pos++;
+            if (subj_pos >= spo->n_slots) {
+                self->exhausted = 1;
                 return NULL;
             }
         }
 
-        SubjSlot *subject = &subj_slots[si];
+        SubjSlot *subject = &subj_slots[subj_pos];
         PredMap *pred_map = &subject->predicates;
         PredSlot *pred_slots = (PredSlot *)pred_map->slots;
 
-        while (pi < pred_map->n_slots) {
-            if (pred_slots[pi].pred_id != SPO_EMPTY) {
-                PredSlot *pred = &pred_slots[pi];
-                if (it->filter_predicate_id == NO_FILTER || pred->pred_id == it->filter_predicate_id) {
+        while (pred_pos < pred_map->n_slots) {
+            if (pred_slots[pred_pos].pred_id != SPO_EMPTY) {
+                PredSlot *pred = &pred_slots[pred_pos];
+                if (self->filter_predicate_id == NO_FILTER || pred->pred_id == self->filter_predicate_id) {
                     IntSet *obj_set = &pred->objects;
                     IntSetSlot *obj_slots = (IntSetSlot *)obj_set->slots;
-                    while (oi < obj_set->n_slots) {
-                        if (obj_slots[oi].value != INTSET_EMPTY) {
-                            size_t object_id = obj_slots[oi].value;
-                            if (it->filter_object_id == NO_FILTER || object_id == it->filter_object_id) {
-                                it->subj_slot = si;
-                                it->pred_slot = pi;
-                                it->obj_slot = oi + 1;
-                                return make_triple(it->store, subject->subj_id, pred->pred_id, object_id);
+                    while (obj_pos < obj_set->n_slots) {
+                        if (obj_slots[obj_pos].value != INTSET_EMPTY) {
+                            size_t object_id = obj_slots[obj_pos].value;
+                            if (self->filter_object_id == NO_FILTER || object_id == self->filter_object_id) {
+                                self->subj_slot = subj_pos;
+                                self->pred_slot = pred_pos;
+                                self->obj_slot = obj_pos + 1;
+                                return make_triple(self->store, subject->subj_id, pred->pred_id, object_id);
                             }
                         }
-                        oi++;
+                        obj_pos++;
                     }
                 }
             }
-            pi++;
-            oi = 0;
+            pred_pos++;
+            obj_pos = 0;
         }
 
-        if (it->single_subject) {
-            it->exhausted = 1;
+        if (self->single_subject) {
+            self->exhausted = 1;
             return NULL;
         }
-        si++;
-        pi = 0;
-        oi = 0;
+        subj_pos++;
+        pred_pos = 0;
+        obj_pos = 0;
     }
 }
 
@@ -470,9 +470,9 @@ static PyObject *TripleLite_add_many(TripleLiteObject *self, PyObject *args)
 
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
-        int rc = add_triple_from_pyobject(self, item);
+        int result = add_triple_from_pyobject(self, item);
         Py_DECREF(item);
-        if (rc < 0) {
+        if (result < 0) {
             Py_DECREF(iter);
             return NULL;
         }
@@ -578,13 +578,13 @@ static PyObject *TripleLite_objects(TripleLiteObject *self, PyObject *args, PyOb
     } else if (subject_id != NO_FILTER) {
         PredMap *pred_map = spo_get_preds(spo, subject_id);
         if (pred_map != NULL) {
-            PredSlot *ps = (PredSlot *)pred_map->slots;
-            for (size_t pi = 0; pi < pred_map->n_slots; pi++) {
-                if (ps[pi].pred_id == SPO_EMPTY) continue;
-                IntSetSlot *obj_slots = (IntSetSlot *)ps[pi].objects.slots;
-                for (size_t i = 0; i < ps[pi].objects.n_slots; i++) {
-                    if (obj_slots[i].value == INTSET_EMPTY) continue;
-                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[i].value]);
+            PredSlot *pred_slots = (PredSlot *)pred_map->slots;
+            for (size_t i = 0; i < pred_map->n_slots; i++) {
+                if (pred_slots[i].pred_id == SPO_EMPTY) continue;
+                IntSetSlot *obj_slots = (IntSetSlot *)pred_slots[i].objects.slots;
+                for (size_t j = 0; j < pred_slots[i].objects.n_slots; j++) {
+                    if (obj_slots[j].value == INTSET_EMPTY) continue;
+                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[j].value]);
                     if (term == NULL || PyList_Append(result, term) < 0) {
                         Py_XDECREF(term);
                         Py_DECREF(result);
@@ -595,17 +595,17 @@ static PyObject *TripleLite_objects(TripleLiteObject *self, PyObject *args, PyOb
             }
         }
     } else {
-        SubjSlot *ss = (SubjSlot *)spo->slots;
-        for (size_t si = 0; si < spo->n_slots; si++) {
-            if (ss[si].subj_id == SPO_EMPTY) continue;
-            PredSlot *ps = (PredSlot *)ss[si].predicates.slots;
-            for (size_t pi = 0; pi < ss[si].predicates.n_slots; pi++) {
-                if (ps[pi].pred_id == SPO_EMPTY) continue;
-                if (predicate_id != NO_FILTER && ps[pi].pred_id != predicate_id) continue;
-                IntSetSlot *obj_slots = (IntSetSlot *)ps[pi].objects.slots;
-                for (size_t i = 0; i < ps[pi].objects.n_slots; i++) {
-                    if (obj_slots[i].value == INTSET_EMPTY) continue;
-                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[i].value]);
+        SubjSlot *subj_slots = (SubjSlot *)spo->slots;
+        for (size_t i = 0; i < spo->n_slots; i++) {
+            if (subj_slots[i].subj_id == SPO_EMPTY) continue;
+            PredSlot *pred_slots = (PredSlot *)subj_slots[i].predicates.slots;
+            for (size_t j = 0; j < subj_slots[i].predicates.n_slots; j++) {
+                if (pred_slots[j].pred_id == SPO_EMPTY) continue;
+                if (predicate_id != NO_FILTER && pred_slots[j].pred_id != predicate_id) continue;
+                IntSetSlot *obj_slots = (IntSetSlot *)pred_slots[j].objects.slots;
+                for (size_t k = 0; k < pred_slots[j].objects.n_slots; k++) {
+                    if (obj_slots[k].value == INTSET_EMPTY) continue;
+                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[k].value]);
                     if (term == NULL || PyList_Append(result, term) < 0) {
                         Py_XDECREF(term);
                         Py_DECREF(result);
@@ -650,14 +650,14 @@ static PyObject *TripleLite_predicate_objects(TripleLiteObject *self, PyObject *
     if (subject_id != NO_FILTER) {
         PredMap *pred_map = spo_get_preds(spo, subject_id);
         if (pred_map != NULL) {
-            PredSlot *ps = (PredSlot *)pred_map->slots;
-            for (size_t pi = 0; pi < pred_map->n_slots; pi++) {
-                if (ps[pi].pred_id == SPO_EMPTY) continue;
-                const char *predicate_str = strings->items[ps[pi].pred_id];
-                IntSetSlot *obj_slots = (IntSetSlot *)ps[pi].objects.slots;
-                for (size_t i = 0; i < ps[pi].objects.n_slots; i++) {
-                    if (obj_slots[i].value == INTSET_EMPTY) continue;
-                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[i].value]);
+            PredSlot *pred_slots = (PredSlot *)pred_map->slots;
+            for (size_t i = 0; i < pred_map->n_slots; i++) {
+                if (pred_slots[i].pred_id == SPO_EMPTY) continue;
+                const char *predicate_str = strings->items[pred_slots[i].pred_id];
+                IntSetSlot *obj_slots = (IntSetSlot *)pred_slots[i].objects.slots;
+                for (size_t j = 0; j < pred_slots[i].objects.n_slots; j++) {
+                    if (obj_slots[j].value == INTSET_EMPTY) continue;
+                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[j].value]);
                     if (term == NULL) {
                         Py_DECREF(result);
                         return NULL;
@@ -673,17 +673,17 @@ static PyObject *TripleLite_predicate_objects(TripleLiteObject *self, PyObject *
             }
         }
     } else {
-        SubjSlot *ss = (SubjSlot *)spo->slots;
-        for (size_t si = 0; si < spo->n_slots; si++) {
-            if (ss[si].subj_id == SPO_EMPTY) continue;
-            PredSlot *ps = (PredSlot *)ss[si].predicates.slots;
-            for (size_t pi = 0; pi < ss[si].predicates.n_slots; pi++) {
-                if (ps[pi].pred_id == SPO_EMPTY) continue;
-                const char *predicate_str = strings->items[ps[pi].pred_id];
-                IntSetSlot *obj_slots = (IntSetSlot *)ps[pi].objects.slots;
-                for (size_t i = 0; i < ps[pi].objects.n_slots; i++) {
-                    if (obj_slots[i].value == INTSET_EMPTY) continue;
-                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[i].value]);
+        SubjSlot *subj_slots = (SubjSlot *)spo->slots;
+        for (size_t i = 0; i < spo->n_slots; i++) {
+            if (subj_slots[i].subj_id == SPO_EMPTY) continue;
+            PredSlot *pred_slots = (PredSlot *)subj_slots[i].predicates.slots;
+            for (size_t j = 0; j < subj_slots[i].predicates.n_slots; j++) {
+                if (pred_slots[j].pred_id == SPO_EMPTY) continue;
+                const char *predicate_str = strings->items[pred_slots[j].pred_id];
+                IntSetSlot *obj_slots = (IntSetSlot *)pred_slots[j].objects.slots;
+                for (size_t k = 0; k < pred_slots[j].objects.n_slots; k++) {
+                    if (obj_slots[k].value == INTSET_EMPTY) continue;
+                    PyObject *term = make_rdfterm(&self->strings, &terms->items[obj_slots[k].value]);
                     if (term == NULL) {
                         Py_DECREF(result);
                         return NULL;
@@ -742,10 +742,10 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
         if (predicate_id != NO_FILTER && object_id != NO_FILTER) {
             IntSet *subjects = spo_get_objects(pos, predicate_id, object_id);
             if (subjects != NULL) {
-                IntSetSlot *subj_s = (IntSetSlot *)subjects->slots;
+                IntSetSlot *subject_slots = (IntSetSlot *)subjects->slots;
                 for (size_t i = 0; i < subjects->n_slots; i++) {
-                    if (subj_s[i].value == INTSET_EMPTY) continue;
-                    PyObject *py_str = PyUnicode_FromString(strings->items[subj_s[i].value]);
+                    if (subject_slots[i].value == INTSET_EMPTY) continue;
+                    PyObject *py_str = PyUnicode_FromString(strings->items[subject_slots[i].value]);
                     if (py_str == NULL || PyList_Append(result, py_str) < 0) {
                         Py_XDECREF(py_str);
                         Py_DECREF(result);
@@ -757,13 +757,13 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
         } else if (predicate_id != NO_FILTER) {
             PredMap *obj_map = spo_get_preds(pos, predicate_id);
             if (obj_map != NULL) {
-                PredSlot *om = (PredSlot *)obj_map->slots;
-                for (size_t oi = 0; oi < obj_map->n_slots; oi++) {
-                    if (om[oi].pred_id == SPO_EMPTY) continue;
-                    IntSetSlot *subj_s = (IntSetSlot *)om[oi].objects.slots;
-                    for (size_t i = 0; i < om[oi].objects.n_slots; i++) {
-                        if (subj_s[i].value == INTSET_EMPTY) continue;
-                        PyObject *py_str = PyUnicode_FromString(strings->items[subj_s[i].value]);
+                PredSlot *obj_entries = (PredSlot *)obj_map->slots;
+                for (size_t i = 0; i < obj_map->n_slots; i++) {
+                    if (obj_entries[i].pred_id == SPO_EMPTY) continue;
+                    IntSetSlot *subject_slots = (IntSetSlot *)obj_entries[i].objects.slots;
+                    for (size_t j = 0; j < obj_entries[i].objects.n_slots; j++) {
+                        if (subject_slots[j].value == INTSET_EMPTY) continue;
+                        PyObject *py_str = PyUnicode_FromString(strings->items[subject_slots[j].value]);
                         if (py_str == NULL || PyList_Append(result, py_str) < 0) {
                             Py_XDECREF(py_str);
                             Py_DECREF(result);
@@ -775,14 +775,14 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
             }
         } else if (object_id != NO_FILTER) {
             SubjSlot *pos_slots = (SubjSlot *)pos->slots;
-            for (size_t pi = 0; pi < pos->n_slots; pi++) {
-                if (pos_slots[pi].subj_id == SPO_EMPTY) continue;
-                IntSet *subjects = spo_get_objects(pos, pos_slots[pi].subj_id, object_id);
+            for (size_t i = 0; i < pos->n_slots; i++) {
+                if (pos_slots[i].subj_id == SPO_EMPTY) continue;
+                IntSet *subjects = spo_get_objects(pos, pos_slots[i].subj_id, object_id);
                 if (subjects == NULL) continue;
-                IntSetSlot *subj_s = (IntSetSlot *)subjects->slots;
-                for (size_t i = 0; i < subjects->n_slots; i++) {
-                    if (subj_s[i].value == INTSET_EMPTY) continue;
-                    PyObject *py_str = PyUnicode_FromString(strings->items[subj_s[i].value]);
+                IntSetSlot *subject_slots = (IntSetSlot *)subjects->slots;
+                for (size_t j = 0; j < subjects->n_slots; j++) {
+                    if (subject_slots[j].value == INTSET_EMPTY) continue;
+                    PyObject *py_str = PyUnicode_FromString(strings->items[subject_slots[j].value]);
                     if (py_str == NULL || PyList_Append(result, py_str) < 0) {
                         Py_XDECREF(py_str);
                         Py_DECREF(result);
@@ -798,15 +798,15 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
                 return PyErr_NoMemory();
             }
             SubjSlot *pos_slots = (SubjSlot *)pos->slots;
-            for (size_t pi = 0; pi < pos->n_slots; pi++) {
-                if (pos_slots[pi].subj_id == SPO_EMPTY) continue;
-                PredSlot *om = (PredSlot *)pos_slots[pi].predicates.slots;
-                for (size_t oi = 0; oi < pos_slots[pi].predicates.n_slots; oi++) {
-                    if (om[oi].pred_id == SPO_EMPTY) continue;
-                    IntSetSlot *subj_s = (IntSetSlot *)om[oi].objects.slots;
-                    for (size_t i = 0; i < om[oi].objects.n_slots; i++) {
-                        if (subj_s[i].value == INTSET_EMPTY) continue;
-                        size_t subject_id = subj_s[i].value;
+            for (size_t i = 0; i < pos->n_slots; i++) {
+                if (pos_slots[i].subj_id == SPO_EMPTY) continue;
+                PredSlot *obj_entries = (PredSlot *)pos_slots[i].predicates.slots;
+                for (size_t j = 0; j < pos_slots[i].predicates.n_slots; j++) {
+                    if (obj_entries[j].pred_id == SPO_EMPTY) continue;
+                    IntSetSlot *subject_slots = (IntSetSlot *)obj_entries[j].objects.slots;
+                    for (size_t k = 0; k < obj_entries[j].objects.n_slots; k++) {
+                        if (subject_slots[k].value == INTSET_EMPTY) continue;
+                        size_t subject_id = subject_slots[k].value;
                         if (intset_contains(&seen, subject_id)) continue;
                         if (intset_add(&seen, subject_id) < 0) {
                             intset_free(&seen);
@@ -828,22 +828,22 @@ static PyObject *TripleLite_subjects(TripleLiteObject *self, PyObject *args, PyO
         }
     } else {
         SPOIndex *spo = &self->spo;
-        SubjSlot *ss = (SubjSlot *)spo->slots;
-        for (size_t si = 0; si < spo->n_slots; si++) {
-            if (ss[si].subj_id == SPO_EMPTY) continue;
-            PredSlot *ps = (PredSlot *)ss[si].predicates.slots;
+        SubjSlot *subj_slots = (SubjSlot *)spo->slots;
+        for (size_t i = 0; i < spo->n_slots; i++) {
+            if (subj_slots[i].subj_id == SPO_EMPTY) continue;
+            PredSlot *pred_slots = (PredSlot *)subj_slots[i].predicates.slots;
             int found = 0;
-            for (size_t pi = 0; pi < ss[si].predicates.n_slots && !found; pi++) {
-                if (ps[pi].pred_id == SPO_EMPTY) continue;
-                if (predicate_id != NO_FILTER && ps[pi].pred_id != predicate_id) continue;
+            for (size_t j = 0; j < subj_slots[i].predicates.n_slots && !found; j++) {
+                if (pred_slots[j].pred_id == SPO_EMPTY) continue;
+                if (predicate_id != NO_FILTER && pred_slots[j].pred_id != predicate_id) continue;
                 if (object_id != NO_FILTER) {
-                    if (intset_contains(&ps[pi].objects, object_id)) found = 1;
+                    if (intset_contains(&pred_slots[j].objects, object_id)) found = 1;
                 } else {
-                    if (ps[pi].objects.len > 0) found = 1;
+                    if (pred_slots[j].objects.len > 0) found = 1;
                 }
             }
             if (found) {
-                const char *subject_str = strings->items[ss[si].subj_id];
+                const char *subject_str = strings->items[subj_slots[i].subj_id];
                 PyObject *py_str = PyUnicode_FromString(subject_str);
                 if (py_str == NULL || PyList_Append(result, py_str) < 0) {
                     Py_XDECREF(py_str);
@@ -904,38 +904,38 @@ static PyObject *TripleLite_remove(TripleLiteObject *self, PyObject *args)
 
     typedef struct { size_t subject_id, predicate_id, object_id; } TripleIds;
     TripleIds *to_remove = NULL;
-    size_t n_remove = 0;
-    size_t cap_remove = 0;
+    size_t remove_count = 0;
+    size_t remove_capacity = 0;
 
     SPOIndex *spo = &self->spo;
-    SubjSlot *ss = (SubjSlot *)spo->slots;
-    for (size_t si = 0; si < spo->n_slots; si++) {
-        if (ss[si].subj_id == SPO_EMPTY) continue;
-        if (subject_id != NO_FILTER && ss[si].subj_id != subject_id) continue;
-        PredSlot *ps = (PredSlot *)ss[si].predicates.slots;
-        for (size_t pi = 0; pi < ss[si].predicates.n_slots; pi++) {
-            if (ps[pi].pred_id == SPO_EMPTY) continue;
-            if (predicate_id != NO_FILTER && ps[pi].pred_id != predicate_id) continue;
-            IntSetSlot *obj_slots = (IntSetSlot *)ps[pi].objects.slots;
-            for (size_t i = 0; i < ps[pi].objects.n_slots; i++) {
-                if (obj_slots[i].value == INTSET_EMPTY) continue;
-                if (object_id != NO_FILTER && obj_slots[i].value != object_id) continue;
-                if (n_remove >= cap_remove) {
-                    size_t new_cap = cap_remove == 0 ? 16 : cap_remove * 2;
-                    TripleIds *new_buf = realloc(to_remove, new_cap * sizeof(TripleIds));
+    SubjSlot *subj_slots = (SubjSlot *)spo->slots;
+    for (size_t i = 0; i < spo->n_slots; i++) {
+        if (subj_slots[i].subj_id == SPO_EMPTY) continue;
+        if (subject_id != NO_FILTER && subj_slots[i].subj_id != subject_id) continue;
+        PredSlot *pred_slots = (PredSlot *)subj_slots[i].predicates.slots;
+        for (size_t j = 0; j < subj_slots[i].predicates.n_slots; j++) {
+            if (pred_slots[j].pred_id == SPO_EMPTY) continue;
+            if (predicate_id != NO_FILTER && pred_slots[j].pred_id != predicate_id) continue;
+            IntSetSlot *obj_slots = (IntSetSlot *)pred_slots[j].objects.slots;
+            for (size_t k = 0; k < pred_slots[j].objects.n_slots; k++) {
+                if (obj_slots[k].value == INTSET_EMPTY) continue;
+                if (object_id != NO_FILTER && obj_slots[k].value != object_id) continue;
+                if (remove_count >= remove_capacity) {
+                    size_t new_capacity = remove_capacity == 0 ? 16 : remove_capacity * 2;
+                    TripleIds *new_buf = realloc(to_remove, new_capacity * sizeof(TripleIds));
                     if (new_buf == NULL) {
                         free(to_remove);
                         return PyErr_NoMemory();
                     }
                     to_remove = new_buf;
-                    cap_remove = new_cap;
+                    remove_capacity = new_capacity;
                 }
-                to_remove[n_remove++] = (TripleIds){.subject_id = ss[si].subj_id, .predicate_id = ps[pi].pred_id, .object_id = obj_slots[i].value};
+                to_remove[remove_count++] = (TripleIds){.subject_id = subj_slots[i].subj_id, .predicate_id = pred_slots[j].pred_id, .object_id = obj_slots[k].value};
             }
         }
     }
 
-    for (size_t i = 0; i < n_remove; i++) {
+    for (size_t i = 0; i < remove_count; i++) {
         if (spo_remove(&self->spo, to_remove[i].subject_id, to_remove[i].predicate_id, to_remove[i].object_id) == 1) {
             self->len--;
             if (self->pos_enabled) {

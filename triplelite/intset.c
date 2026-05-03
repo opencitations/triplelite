@@ -18,9 +18,9 @@ static size_t hash(const void *slot)
     return ((const IntSetSlot *)slot)->value;
 }
 
-static int equal(const void *a, const void *b)
+static int equal(const void *slot_a, const void *slot_b)
 {
-    return ((const IntSetSlot *)a)->value == ((const IntSetSlot *)b)->value;
+    return ((const IntSetSlot *)slot_a)->value == ((const IntSetSlot *)slot_b)->value;
 }
 
 static const OAOps intset_ops = {
@@ -39,8 +39,8 @@ int intset_add(IntSet *set, size_t value)
             return -1;
     }
     IntSetSlot key = {value};
-    size_t idx = oa_probe(set, &key, &intset_ops);
-    IntSetSlot *slot = (IntSetSlot *)set->slots + idx;
+    size_t slot_index = oa_probe(set, &key, &intset_ops);
+    IntSetSlot *slot = (IntSetSlot *)set->slots + slot_index;
     if (slot->value != INTSET_EMPTY)
         return 0;
     slot->value = value;
@@ -57,11 +57,11 @@ int intset_contains(IntSet *set, size_t value)
 void intset_remove(IntSet *set, size_t value)
 {
     IntSetSlot key = {value};
-    size_t idx = oa_probe(set, &key, &intset_ops);
-    IntSetSlot *slot = (IntSetSlot *)set->slots + idx;
+    size_t slot_index = oa_probe(set, &key, &intset_ops);
+    IntSetSlot *slot = (IntSetSlot *)set->slots + slot_index;
     if (slot->value == INTSET_EMPTY)
         return;
-    oa_remove_at(set, idx, &intset_ops);
+    oa_remove_at(set, slot_index, &intset_ops);
 }
 
 void intset_free(IntSet *set)

@@ -15,17 +15,18 @@ void string_array_init(StringArray *arr)
     arr->capacity = 0;
 }
 
-int string_array_append(StringArray *arr, const char *s){
+int string_array_append(StringArray *arr, const char *str)
+{
     if (arr->len == arr->capacity) {
-        size_t new_cap = arr->capacity == 0 ? 8 : arr->capacity * 2;
-        const char **new_items = realloc(arr->items, new_cap * sizeof(const char *));
+        size_t new_capacity = arr->capacity == 0 ? 8 : arr->capacity * 2;
+        const char **new_items = realloc(arr->items, new_capacity * sizeof(const char *));
         if (new_items == NULL) {
             return -1;
         }
         arr->items = new_items;
-        arr->capacity = new_cap;
+        arr->capacity = new_capacity;
     }
-    arr->items[arr->len] = strdup(s);
+    arr->items[arr->len] = strdup(str);
     if (arr->items[arr->len] == NULL) {
         return -1;
     }
@@ -51,13 +52,13 @@ void rdfterm_array_init(RDFTermArray *arr)
 int rdfterm_array_append(RDFTermArray *arr, const RDFTerm *term)
 {
     if (arr->len == arr->capacity) {
-        size_t new_cap = arr->capacity == 0 ? 8 : arr->capacity * 2;
-        RDFTerm *new_items = realloc(arr->items, new_cap * sizeof(RDFTerm));
+        size_t new_capacity = arr->capacity == 0 ? 8 : arr->capacity * 2;
+        RDFTerm *new_items = realloc(arr->items, new_capacity * sizeof(RDFTerm));
         if (new_items == NULL) {
             return -1;
         }
         arr->items = new_items;
-        arr->capacity = new_cap;
+        arr->capacity = new_capacity;
     }
     arr->items[arr->len] = *term;
     arr->len++;

@@ -18,22 +18,22 @@ static void set_empty(void *slot)
 
 static size_t hash(const void *slot)
 {
-    const RDFTerm *k = &((const RDFTermSlot *)slot)->key;
-    size_t h = k->type_id;
-    h = h * 31 + k->value_id;
-    h = h * 31 + k->datatype_id;
-    h = h * 31 + k->lang_id;
-    return h;
+    const RDFTerm *key = &((const RDFTermSlot *)slot)->key;
+    size_t hash_value = key->type_id;
+    hash_value = hash_value * 31 + key->value_id;
+    hash_value = hash_value * 31 + key->datatype_id;
+    hash_value = hash_value * 31 + key->lang_id;
+    return hash_value;
 }
 
-static int equal(const void *a, const void *b)
+static int equal(const void *slot_a, const void *slot_b)
 {
-    const RDFTerm *ka = &((const RDFTermSlot *)a)->key;
-    const RDFTerm *kb = &((const RDFTermSlot *)b)->key;
-    return ka->type_id == kb->type_id &&
-           ka->value_id == kb->value_id &&
-           ka->datatype_id == kb->datatype_id &&
-           ka->lang_id == kb->lang_id;
+    const RDFTerm *key_a = &((const RDFTermSlot *)slot_a)->key;
+    const RDFTerm *key_b = &((const RDFTermSlot *)slot_b)->key;
+    return key_a->type_id == key_b->type_id &&
+           key_a->value_id == key_b->value_id &&
+           key_a->datatype_id == key_b->datatype_id &&
+           key_a->lang_id == key_b->lang_id;
 }
 
 static const OAOps rdfterm_ops = {
@@ -62,8 +62,8 @@ int rdfterm_hashmap_put(RDFTermHashMap *map, const RDFTerm *key, size_t value)
             return -1;
     }
     RDFTermSlot search = {*key, 0};
-    size_t idx = oa_probe(map, &search, &rdfterm_ops);
-    RDFTermSlot *slot = (RDFTermSlot *)map->slots + idx;
+    size_t slot_index = oa_probe(map, &search, &rdfterm_ops);
+    RDFTermSlot *slot = (RDFTermSlot *)map->slots + slot_index;
     if (slot->key.type_id != RDFTERM_EMPTY) {
         slot->value = value;
         return 0;

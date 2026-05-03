@@ -20,9 +20,9 @@ static size_t pm_hash(const void *slot)
     return ((const PredSlot *)slot)->pred_id;
 }
 
-static int pm_equal(const void *a, const void *b)
+static int pm_equal(const void *slot_a, const void *slot_b)
 {
-    return ((const PredSlot *)a)->pred_id == ((const PredSlot *)b)->pred_id;
+    return ((const PredSlot *)slot_a)->pred_id == ((const PredSlot *)slot_b)->pred_id;
 }
 
 static void pm_cleanup(void *slot)
@@ -51,9 +51,9 @@ static size_t si_hash(const void *slot)
     return ((const SubjSlot *)slot)->subj_id;
 }
 
-static int si_equal(const void *a, const void *b)
+static int si_equal(const void *slot_a, const void *slot_b)
 {
-    return ((const SubjSlot *)a)->subj_id == ((const SubjSlot *)b)->subj_id;
+    return ((const SubjSlot *)slot_a)->subj_id == ((const SubjSlot *)slot_b)->subj_id;
 }
 
 static void si_cleanup(void *slot)
@@ -91,8 +91,8 @@ static PredSlot *predmap_get_or_create(PredMap *pred_map, size_t predicate_id)
             return NULL;
     }
     PredSlot key = {predicate_id, {NULL, 0, 0}};
-    size_t idx = oa_probe(pred_map, &key, &predmap_ops);
-    PredSlot *slot = (PredSlot *)pred_map->slots + idx;
+    size_t slot_index = oa_probe(pred_map, &key, &predmap_ops);
+    PredSlot *slot = (PredSlot *)pred_map->slots + slot_index;
     if (slot->pred_id != SPO_EMPTY)
         return slot;
     slot->pred_id = predicate_id;
@@ -111,8 +111,8 @@ static SubjSlot *spo_get_or_create(SPOIndex *index, size_t subject_id)
             return NULL;
     }
     SubjSlot key = {subject_id, {NULL, 0, 0}};
-    size_t idx = oa_probe(index, &key, &spo_ops);
-    SubjSlot *slot = (SubjSlot *)index->slots + idx;
+    size_t slot_index = oa_probe(index, &key, &spo_ops);
+    SubjSlot *slot = (SubjSlot *)index->slots + slot_index;
     if (slot->subj_id != SPO_EMPTY)
         return slot;
     slot->subj_id = subject_id;
@@ -158,13 +158,13 @@ int spo_remove(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t o
         return 0;
     intset_remove(&predicate->objects, object_id);
     if (predicate->objects.len == 0) {
-        PredSlot pk = {predicate_id, {NULL, 0, 0}};
-        size_t pidx = oa_probe(&subject->predicates, &pk, &predmap_ops);
-        oa_remove_at(&subject->predicates, pidx, &predmap_ops);
+        PredSlot pred_key = {predicate_id, {NULL, 0, 0}};
+        size_t pred_slot_index = oa_probe(&subject->predicates, &pred_key, &predmap_ops);
+        oa_remove_at(&subject->predicates, pred_slot_index, &predmap_ops);
         if (subject->predicates.len == 0) {
-            SubjSlot sk = {subject_id, {NULL, 0, 0}};
-            size_t sidx = oa_probe(index, &sk, &spo_ops);
-            oa_remove_at(index, sidx, &spo_ops);
+            SubjSlot subj_key = {subject_id, {NULL, 0, 0}};
+            size_t subj_slot_index = oa_probe(index, &subj_key, &spo_ops);
+            oa_remove_at(index, subj_slot_index, &spo_ops);
         }
     }
     return 1;
