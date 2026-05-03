@@ -3,13 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-static size_t rdfterm_hash(const RDFTerm *term, size_t n_buckets)
+static size_t rdfterm_hash(const RDFTerm *term)
 {
     size_t hash = hash_string(term->type);
     hash = hash * 31 + hash_string(term->value);
     hash = hash * 31 + hash_string(term->datatype);
     hash = hash * 31 + hash_string(term->lang);
-    return hash % n_buckets;
+    return hash;
 }
 
 static int rdfterm_equal(const RDFTerm *a, const RDFTerm *b)
@@ -33,7 +33,7 @@ int rdfterm_hashmap_init(RDFTermHashMap *map, size_t n_buckets)
 
 int rdfterm_hashmap_get(RDFTermHashMap *map, const RDFTerm *key, size_t *out)
 {
-    size_t bucket = rdfterm_hash(key, map->n_buckets);
+    size_t bucket = rdfterm_hash(key) % map->n_buckets;
     RDFTermHashEntry *entry = map->buckets[bucket];
     while (entry != NULL) {
         if (rdfterm_equal(&entry->key, key)) {
@@ -45,9 +45,32 @@ int rdfterm_hashmap_get(RDFTermHashMap *map, const RDFTerm *key, size_t *out)
     return 0;
 }
 
+static int rdfterm_hashmap_resize(RDFTermHashMap *map)
+{
+    size_t new_n_buckets = map->n_buckets * 2;
+    RDFTermHashEntry **new_buckets = calloc(new_n_buckets, sizeof(RDFTermHashEntry *));
+    if (new_buckets == NULL) {
+        return -1;
+    }
+    for (size_t i = 0; i < map->n_buckets; i++) {
+        RDFTermHashEntry *entry = map->buckets[i];
+        while (entry != NULL) {
+            RDFTermHashEntry *next = entry->next;
+            size_t bucket = rdfterm_hash(&entry->key) % new_n_buckets;
+            entry->next = new_buckets[bucket];
+            new_buckets[bucket] = entry;
+            entry = next;
+        }
+    }
+    free(map->buckets);
+    map->buckets = new_buckets;
+    map->n_buckets = new_n_buckets;
+    return 0;
+}
+
 int rdfterm_hashmap_put(RDFTermHashMap *map, const RDFTerm *key, size_t value)
 {
-    size_t bucket = rdfterm_hash(key, map->n_buckets);
+    size_t bucket = rdfterm_hash(key) % map->n_buckets;
     RDFTermHashEntry *entry = map->buckets[bucket];
     while (entry != NULL) {
         if (rdfterm_equal(&entry->key, key)) {
@@ -55,6 +78,12 @@ int rdfterm_hashmap_put(RDFTermHashMap *map, const RDFTerm *key, size_t value)
             return 0;
         }
         entry = entry->next;
+    }
+    if (map->len * 4 >= map->n_buckets * 3) {
+        if (rdfterm_hashmap_resize(map) < 0) {
+            return -1;
+        }
+        bucket = rdfterm_hash(key) % map->n_buckets;
     }
     RDFTermHashEntry *new_entry = malloc(sizeof(RDFTermHashEntry));
     if (new_entry == NULL) {

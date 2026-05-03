@@ -27,6 +27,29 @@ static PredEntry *predmap_find(PredMap *pred_map, size_t predicate_id)
     return NULL;
 }
 
+static int predmap_resize(PredMap *pred_map)
+{
+    size_t new_n_buckets = pred_map->n_buckets * 2;
+    PredEntry **new_buckets = calloc(new_n_buckets, sizeof(PredEntry *));
+    if (new_buckets == NULL) {
+        return -1;
+    }
+    for (size_t i = 0; i < pred_map->n_buckets; i++) {
+        PredEntry *entry = pred_map->buckets[i];
+        while (entry != NULL) {
+            PredEntry *next = entry->next;
+            size_t slot = entry->pred_id % new_n_buckets;
+            entry->next = new_buckets[slot];
+            new_buckets[slot] = entry;
+            entry = next;
+        }
+    }
+    free(pred_map->buckets);
+    pred_map->buckets = new_buckets;
+    pred_map->n_buckets = new_n_buckets;
+    return 0;
+}
+
 static PredEntry *predmap_get_or_create(PredMap *pred_map, size_t predicate_id)
 {
     size_t slot = predicate_id % pred_map->n_buckets;
@@ -36,6 +59,12 @@ static PredEntry *predmap_get_or_create(PredMap *pred_map, size_t predicate_id)
             return entry;
         }
         entry = entry->next;
+    }
+    if (pred_map->len * 4 >= pred_map->n_buckets * 3) {
+        if (predmap_resize(pred_map) < 0) {
+            return NULL;
+        }
+        slot = predicate_id % pred_map->n_buckets;
     }
     entry = malloc(sizeof(PredEntry));
     if (entry == NULL) {
@@ -63,7 +92,7 @@ static int predmap_init(PredMap *pred_map, size_t n_buckets)
     return 0;
 }
 
-static SubjEntry *spo_find(SPOIndex *index, size_t subject_id)
+SubjEntry *spo_find(SPOIndex *index, size_t subject_id)
 {
     size_t slot = subject_id % index->n_buckets;
     SubjEntry *entry = index->buckets[slot];
@@ -76,6 +105,29 @@ static SubjEntry *spo_find(SPOIndex *index, size_t subject_id)
     return NULL;
 }
 
+static int spo_resize(SPOIndex *index)
+{
+    size_t new_n_buckets = index->n_buckets * 2;
+    SubjEntry **new_buckets = calloc(new_n_buckets, sizeof(SubjEntry *));
+    if (new_buckets == NULL) {
+        return -1;
+    }
+    for (size_t i = 0; i < index->n_buckets; i++) {
+        SubjEntry *entry = index->buckets[i];
+        while (entry != NULL) {
+            SubjEntry *next = entry->next;
+            size_t slot = entry->subj_id % new_n_buckets;
+            entry->next = new_buckets[slot];
+            new_buckets[slot] = entry;
+            entry = next;
+        }
+    }
+    free(index->buckets);
+    index->buckets = new_buckets;
+    index->n_buckets = new_n_buckets;
+    return 0;
+}
+
 static SubjEntry *spo_get_or_create(SPOIndex *index, size_t subject_id)
 {
     size_t slot = subject_id % index->n_buckets;
@@ -85,6 +137,12 @@ static SubjEntry *spo_get_or_create(SPOIndex *index, size_t subject_id)
             return entry;
         }
         entry = entry->next;
+    }
+    if (index->len * 4 >= index->n_buckets * 3) {
+        if (spo_resize(index) < 0) {
+            return NULL;
+        }
+        slot = subject_id % index->n_buckets;
     }
     entry = malloc(sizeof(SubjEntry));
     if (entry == NULL) {

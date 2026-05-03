@@ -37,6 +37,29 @@ int hashmap_get(HashMap *map, const char *key, size_t *out)
     return 0;
 }
 
+static int hashmap_resize(HashMap *map)
+{
+    size_t new_n_buckets = map->n_buckets * 2;
+    HashEntry **new_buckets = calloc(new_n_buckets, sizeof(HashEntry *));
+    if (new_buckets == NULL) {
+        return -1;
+    }
+    for (size_t i = 0; i < map->n_buckets; i++) {
+        HashEntry *entry = map->buckets[i];
+        while (entry != NULL) {
+            HashEntry *next = entry->next;
+            size_t bucket = hash_string(entry->key) % new_n_buckets;
+            entry->next = new_buckets[bucket];
+            new_buckets[bucket] = entry;
+            entry = next;
+        }
+    }
+    free(map->buckets);
+    map->buckets = new_buckets;
+    map->n_buckets = new_n_buckets;
+    return 0;
+}
+
 int hashmap_put(HashMap *map, const char *key, size_t value)
 {
     size_t bucket = hash_string(key) % map->n_buckets;
@@ -47,6 +70,12 @@ int hashmap_put(HashMap *map, const char *key, size_t value)
             return 0;
         }
         entry = entry->next;
+    }
+    if (map->len * 4 >= map->n_buckets * 3) {
+        if (hashmap_resize(map) < 0) {
+            return -1;
+        }
+        bucket = hash_string(key) % map->n_buckets;
     }
     HashEntry *new_entry = malloc(sizeof(HashEntry));
     if (new_entry == NULL) {

@@ -29,6 +29,7 @@ typedef struct {
 } SPOIndex;
 
 int spo_init(SPOIndex *index, size_t n_buckets);
+SubjEntry *spo_find(SPOIndex *index, size_t subject_id);
 int spo_add(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
 int spo_contains(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
 int spo_remove(SPOIndex *index, size_t subject_id, size_t predicate_id, size_t object_id);
