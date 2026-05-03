@@ -5,6 +5,9 @@
  */
 
 #include <Python.h>
+#if PY_VERSION_HEX < 0x030C0000
+#include <structmember.h>
+#endif
 #include <stddef.h>
 #include "dynarray.h"
 #include "hashmap.h"
@@ -1008,7 +1011,11 @@ static PyMethodDef TripleLite_methods[] = {
 };
 
 static PyMemberDef TripleLite_members[] = {
+#if PY_VERSION_HEX >= 0x030C0000
     {"identifier", Py_T_OBJECT_EX, offsetof(TripleLiteObject, identifier), 0, NULL},
+#else
+    {"identifier", T_OBJECT_EX, offsetof(TripleLiteObject, identifier), 0, NULL},
+#endif
     {NULL}
 };
 
