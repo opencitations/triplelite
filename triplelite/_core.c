@@ -343,17 +343,19 @@ static int TripleLite_init(TripleLiteObject *self, PyObject *args, PyObject *kwd
             PyObject *item;
             while ((item = PyIter_Next(iter)) != NULL) {
                 const char *pred_str = PyUnicode_AsUTF8(item);
-                Py_DECREF(item);
                 if (pred_str == NULL) {
+                    Py_DECREF(item);
                     Py_DECREF(iter);
                     return -1;
                 }
                 size_t pred_id;
                 if (string_interner_get_or_create(&self->strings, pred_str, &pred_id) < 0) {
+                    Py_DECREF(item);
                     Py_DECREF(iter);
                     PyErr_SetString(PyExc_MemoryError, "Failed to intern predicate");
                     return -1;
                 }
+                Py_DECREF(item);
                 if (intset_add(&self->indexed_preds, pred_id) < 0) {
                     Py_DECREF(iter);
                     return -1;
@@ -412,19 +414,11 @@ static PyObject *TripleLite_add(TripleLiteObject *self, PyObject *args)
 
 static int add_triple_from_pyobject(TripleLiteObject *self, PyObject *item)
 {
-    PyObject *py_subject = PyTuple_GET_ITEM(item, 0);
-    PyObject *py_predicate = PyTuple_GET_ITEM(item, 1);
-    PyObject *py_rdfterm = PyTuple_GET_ITEM(item, 2);
-
-    const char *subject = PyUnicode_AsUTF8(py_subject);
-    const char *predicate = PyUnicode_AsUTF8(py_predicate);
-    if (subject == NULL || predicate == NULL) return -1;
-
-    const char *type = PyUnicode_AsUTF8(PyTuple_GET_ITEM(py_rdfterm, 0));
-    const char *value = PyUnicode_AsUTF8(PyTuple_GET_ITEM(py_rdfterm, 1));
-    const char *datatype = PyUnicode_AsUTF8(PyTuple_GET_ITEM(py_rdfterm, 2));
-    const char *lang = PyUnicode_AsUTF8(PyTuple_GET_ITEM(py_rdfterm, 3));
-    if (type == NULL || value == NULL || datatype == NULL || lang == NULL) return -1;
+    const char *subject, *predicate, *type, *value, *datatype, *lang;
+    if (!PyArg_ParseTuple(item, "ss(ssss)", &subject, &predicate,
+                          &type, &value, &datatype, &lang)) {
+        return -1;
+    }
 
     size_t subject_id, predicate_id, object_id;
     if (string_interner_get_or_create(&self->strings, subject, &subject_id) < 0 ||
