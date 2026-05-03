@@ -1,10 +1,10 @@
 ---
 title: TripleLite
-description: Lightweight in-memory RDF graph for Python with configurable indexing
+description: In-memory RDF triple store for Python, optimized for speed and memory efficiency with a C core
 template: doc
 ---
 
-TripleLite is an in-memory RDF triple store for Python. It stores triples in nested dictionaries, with an optional reverse index configurable per predicate.
+TripleLite is an in-memory RDF triple store for Python, optimized for speed and memory efficiency. The storage engine is written in C, with a Python API on top. It supports configurable reverse indexing per predicate.
 
 ## Install
 

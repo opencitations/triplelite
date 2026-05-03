@@ -1,9 +1,10 @@
 # TripleLite
 
-Lightweight in-memory RDF triple store for Python with configurable indexing.
+Lightweight in-memory RDF triple store for Python, optimized for speed and memory efficiency with a C core.
 
 [![PyPI](https://img.shields.io/pypi/v/triplelite)](https://pypi.org/project/triplelite/)
 [![Python](https://img.shields.io/pypi/pyversions/triplelite)](https://pypi.org/project/triplelite/)
+[![C extension](https://img.shields.io/badge/core-C-blue)](https://github.com/opencitations/triplelite)
 [![Tests](https://img.shields.io/github/actions/workflow/status/opencitations/triplelite/test.yml?label=tests)](https://github.com/opencitations/triplelite/actions/workflows/test.yml)
 [![Coverage](https://opencitations.github.io/triplelite/coverage-badge.svg)](https://opencitations.github.io/triplelite/coverage/)
 [![REUSE](https://api.reuse.software/badge/github.com/opencitations/triplelite)](https://api.reuse.software/info/github.com/opencitations/triplelite)
