@@ -1,3 +1,27 @@
+# [1.3.0](https://github.com/opencitations/triplelite/compare/v1.2.0...v1.3.0) (2026-05-03)
+
+
+### Bug Fixes
+
+* support Python 3.11 by including structmember.h ([87ca533](https://github.com/opencitations/triplelite/commit/87ca53357a4aeb653cb002c3c3cf753ab9c4a701))
+* use-after-free in init and missing input validation in add_many ([c8dc8e4](https://github.com/opencitations/triplelite/commit/c8dc8e414738b20437ca13578882a2d3c09c4cf2))
+
+
+### Features
+
+* add a chained hashmap (djb2) ([81137f5](https://github.com/opencitations/triplelite/commit/81137f59cf34e2b134bec2a2166912e9c043ed10))
+* add integer set and SPO triple index ([2a40d65](https://github.com/opencitations/triplelite/commit/2a40d65c7f7a51e6cc9b2e94553193af10468b6f))
+* add RDFTerm hashmap and string/RDFTerm interners ([5e8256a](https://github.com/opencitations/triplelite/commit/5e8256add7fc08d7efddc2a527165bb1264f848a))
+* delegate core TripleLite operations to C extension ([c0ff67b](https://github.com/opencitations/triplelite/commit/c0ff67be9e7066e6821da01082697aa140cb63c7))
+* implement TripleLite C extension with Python bindings ([606d2d4](https://github.com/opencitations/triplelite/commit/606d2d4383a7f9a629a892496e0f01d2b2996239))
+* move POS index, identifier, and add_many to C extension. ([95373ca](https://github.com/opencitations/triplelite/commit/95373ca7b67297f3dbbd759a9a6b353f99f4a6ed))
+
+
+### Performance Improvements
+
+* add dynamic resizing to all hash tables and optimize query lookups ([d266629](https://github.com/opencitations/triplelite/commit/d266629b0fac9bca3ca5dc668e226a0c162ea673))
+* replace chained hash tables with open-addressing ([b0bc371](https://github.com/opencitations/triplelite/commit/b0bc371004598daf618581208ea27111c74e140f))
+
 <!--
 SPDX-FileCopyrightText: 2026 Arcangelo Massari <arcangelo.massari@unibo.it>
 
