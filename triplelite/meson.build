@@ -17,6 +17,7 @@ py.extension_module(
 
 py.install_sources(
     '__init__.py',
+    '_core.pyi',
     '_graph.py',
     '_rdflib_bridge.py',
     '_types.py',
