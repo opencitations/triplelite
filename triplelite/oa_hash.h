@@ -5,6 +5,16 @@
 #define OA_HASH_H
 
 #include <stddef.h>
+#include <stdint.h>
+
+static inline size_t oa_mix64(size_t key)
+{
+    uint64_t mixed = (uint64_t)key;
+    mixed = (mixed ^ (mixed >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    mixed = (mixed ^ (mixed >> 27)) * 0x94d049bb133111ebULL;
+    mixed = mixed ^ (mixed >> 31);
+    return (size_t)mixed;
+}
 
 typedef struct {
     size_t slot_size;

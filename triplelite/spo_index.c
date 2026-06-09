@@ -17,7 +17,7 @@ static void pm_set_empty(void *slot)
 
 static size_t pm_hash(const void *slot)
 {
-    return ((const PredSlot *)slot)->pred_id;
+    return oa_mix64(((const PredSlot *)slot)->pred_id);
 }
 
 static int pm_equal(const void *slot_a, const void *slot_b)
@@ -48,7 +48,7 @@ static void si_set_empty(void *slot)
 
 static size_t si_hash(const void *slot)
 {
-    return ((const SubjSlot *)slot)->subj_id;
+    return oa_mix64(((const SubjSlot *)slot)->subj_id);
 }
 
 static int si_equal(const void *slot_a, const void *slot_b)

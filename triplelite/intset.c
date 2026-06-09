@@ -15,7 +15,7 @@ static void set_empty(void *slot)
 
 static size_t hash(const void *slot)
 {
-    return ((const IntSetSlot *)slot)->value;
+    return oa_mix64(((const IntSetSlot *)slot)->value);
 }
 
 static int equal(const void *slot_a, const void *slot_b)
