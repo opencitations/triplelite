@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/opencitations/triplelite/compare/v1.4.0...v1.4.1) (2026-06-09)
+
+
+### Performance Improvements
+
+* **hash:** scramble integer keys before using them as hashes [release] ([8a4a3e0](https://github.com/opencitations/triplelite/commit/8a4a3e0efb47d5a3eaf38c2f940f088e6fee57d8))
+
 # [1.4.0](https://github.com/opencitations/triplelite/compare/v1.3.1...v1.4.0) (2026-05-03)
 
 

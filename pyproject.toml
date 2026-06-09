@@ -1,6 +1,6 @@
 [project]
 name = "triplelite"
-version = "1.4.0"
+version = "1.4.1"
 description = "Lightweight RDF graph with configurable indices"
 license = "ISC"
 readme = "README.md"
